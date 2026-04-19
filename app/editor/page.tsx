@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, FormEvent, useEffect, useRef } from 'react'
+import { useState, FormEvent, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '../context/AuthContext'
 import { usePosts, CATEGORY_OPTIONS, type DraftPost } from '../hooks/usePosts'
 import AppHeader from '../components/AppHeader'
 
-export default function EditorPage() {
+function EditorContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const editSlug = searchParams.get('edit')
@@ -397,5 +397,13 @@ export default function EditorPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+export default function EditorPage() {
+  return (
+    <Suspense fallback={<div className="bg-white min-h-screen" />}>
+      <EditorContent />
+    </Suspense>
   )
 }
