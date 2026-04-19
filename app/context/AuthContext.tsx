@@ -26,7 +26,7 @@ type AuthContextValue = {
 }
 
 // ── API base ───────────────────────────────────────────────────
-const API = 'http://localhost:5001'
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'https://blogbackend-7hhc.onrender.com'
 const TOKEN_KEY = 'blogspace_token'
 const USER_KEY = 'blogspace_user'
 
