@@ -13,7 +13,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── App setup ──────────────────────────────────────────────────
 app = Flask(__name__)
-_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+_default_origins = "http://localhost:3000,https://blogbackend-7hhc.onrender.com"
+_cors_origins = os.environ.get("CORS_ORIGINS", _default_origins).split(",")
 CORS(app, resources={r"/api/*": {"origins": _cors_origins}})
 
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "blogspace-dev-secret-change-in-prod")
