@@ -1,0 +1,20 @@
+[flake8]
+# Only lint source files — never venv or third-party packages
+exclude =
+    venv,
+    .venv,
+    __pycache__,
+    .git,
+    *.egg-info,
+    dist,
+    build,
+    node_modules,
+    .next
+
+# Match the CI max-line-length
+max-line-length = 120
+
+# Errors that are hard failures (syntax errors, undefined names)
+per-file-ignores =
+    # Allow broad except in app.py (Flask catch-all patterns)
+    backend/app.py: E722
