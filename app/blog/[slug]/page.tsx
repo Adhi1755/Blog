@@ -121,6 +121,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
 
   // Load post from localStorage
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPost(getPostBySlug(slug))
     incrementViews(slug)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,10 +130,12 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
   // Sync live post data (likes, comments)
   useEffect(() => {
     const live = posts.find((p) => p.slug === slug)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (live) setPost(live)
   }, [posts, slug])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user) setCommentName(user.name)
   }, [user])
 

@@ -189,7 +189,7 @@ export const posts: Post[] = [
     likes: 113,
     views: 2680,
     comments: [],
-    author: { name: 'Sneha K', initials: 'SK', avatarColor: 'from-orange-500 to-amber-600' },
+    author: { name: 'Snehaa K', initials: 'SK', avatarColor: 'from-orange-500 to-amber-600' },
     body: [
       { type: 'paragraph', text: 'Most developers reach for Elasticsearch or Algolia the moment they need search. But for the vast majority of applications, Postgres full-text search is more than capable — and it eliminates an entire infrastructure dependency.' },
       { type: 'heading', text: 'tsvector and tsquery' },

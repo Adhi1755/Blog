@@ -80,8 +80,10 @@ export function usePosts() {
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     setPosts(loadPosts())
     setHydrated(true)
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
   useEffect(() => {
