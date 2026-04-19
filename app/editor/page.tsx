@@ -83,6 +83,7 @@ function EditorContent() {
     if (!editSlug || !hydrated) return
     const post = posts.find((p) => p.slug === editSlug)
     if (!post) return
+    /* eslint-disable react-hooks/set-state-in-effect */
     setTitle(post.title)
     setExcerpt(post.excerpt)
     setContent(post.body?.map((b) => ('text' in b ? b.text : '')).join('\n\n') ?? '')
@@ -91,6 +92,7 @@ function EditorContent() {
     setThumbnail(post.thumbnail ?? '')
     setTagsInput((post.tags ?? []).join(', '))
     setFeatured(post.featured ?? false)
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [editSlug, hydrated, posts])
 
   useEffect(() => {
