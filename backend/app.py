@@ -13,14 +13,46 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── App setup ──────────────────────────────────────────────────
 app = Flask(__name__)
-_default_origins = "http://localhost:3000,https://blogbackend-7hhc.onrender.com"
+
+# Origins that are allowed to call the API.
+# Override with CORS_ORIGINS env var (comma-separated) in production.
+_default_origins = "http://localhost:3000"
 _cors_origins = os.environ.get("CORS_ORIGINS", _default_origins).split(",")
-CORS(app, resources={r"/api/*": {"origins": _cors_origins}})
+
+CORS(
+    app,
+    resources={r"/api/*": {
+        "origins": _cors_origins,
+        # Preflight must echo these or the browser blocks the real request
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Authorization"],
+        "supports_credentials": False,
+        # Cache preflight response for 10 minutes to reduce extra round-trips
+        "max_age": 600,
+    }},
+    # Also handle OPTIONS auto-reply at the app level
+    automatic_options=True,
+)
 
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "blogspace-dev-secret-change-in-prod")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
 
 jwt = JWTManager(app)
+
+
+# ── CORS safety-net ────────────────────────────────────────────
+# flask-cors handles most cases; this hook guarantees headers are
+# present even on error responses so the browser preflight passes.
+@app.after_request
+def _add_cors_headers(response):
+    origin = request.headers.get("Origin", "")
+    if origin in _cors_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Max-Age"] = "600"
+    return response
 
 # ── Database helpers ───────────────────────────────────────────
 DB_PATH = os.path.join(os.path.dirname(__file__), "blogspace.db")
