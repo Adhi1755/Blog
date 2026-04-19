@@ -13,7 +13,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── App setup ──────────────────────────────────────────────────
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+CORS(app, resources={r"/api/*": {"origins": _cors_origins}})
 
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "blogspace-dev-secret-change-in-prod")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
@@ -157,4 +158,6 @@ def health():
 # ── Bootstrap ─────────────────────────────────────────────────
 if __name__ == "__main__":
     init_db()
-    app.run(port=5001, debug=True)
+    port = int(os.environ.get("PORT", 5001))
+    debug = os.environ.get("FLASK_ENV") == "development"
+    app.run(host="0.0.0.0", port=port, debug=debug)
