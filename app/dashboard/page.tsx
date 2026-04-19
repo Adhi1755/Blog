@@ -1,18 +1,11 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import type { Post, ContentBlock } from '../data/posts'
 import { usePosts } from '../hooks/usePosts'
 import { useAuth } from '../context/AuthContext'
-
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
-function formatDate(raw: string): string {
-  return raw
-}
+import AppHeader from '../components/AppHeader'
 
 // ─────────────────────────────────────────────────────────────
 // Content block renderer (full-read view)
@@ -323,90 +316,11 @@ function ReaderPanel({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Dashboard Navbar
-// ─────────────────────────────────────────────────────────────
-function DashboardNav({
-  user,
-  onLogout,
-  onCreateBlog,
-}: {
-  user: { name: string; email: string }
-  onLogout: () => void
-  onCreateBlog: () => void
-}) {
-  return (
-    <header className="shrink-0 sticky top-0 z-50 w-full border-b border-neutral-200 bg-white">
-      <nav className="flex items-center justify-between px-6 h-12">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <span className="flex h-6 w-6 items-center justify-center bg-black text-xs font-black text-white group-hover:bg-neutral-700 transition-colors">
-            B
-          </span>
-          <span className="text-sm font-black tracking-tight text-black group-hover:text-neutral-600 transition-colors">
-            BlogSpace
-          </span>
-        </Link>
-
-        {/* Center links */}
-        <ul className="flex items-center gap-0">
-          <li>
-            <Link
-              id="nav-feed"
-              href="/dashboard"
-              className="px-4 h-12 inline-flex items-center text-xs font-bold uppercase tracking-widest text-black border-b-2 border-black"
-            >
-              Feed
-            </Link>
-          </li>
-          <li>
-            <button
-              id="nav-create"
-              onClick={onCreateBlog}
-              className="px-4 h-12 inline-flex items-center text-xs font-bold uppercase tracking-widest text-neutral-500 hover:text-black border-b-2 border-transparent hover:border-black transition-colors"
-            >
-              Create Blog
-            </button>
-          </li>
-          <li>
-            <Link
-              id="nav-profile"
-              href="/profile"
-              className="px-4 h-12 inline-flex items-center text-xs font-bold uppercase tracking-widest text-neutral-500 hover:text-black border-b-2 border-transparent hover:border-black transition-colors"
-            >
-              Profile
-            </Link>
-          </li>
-        </ul>
-
-        {/* Right side */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 border border-neutral-200 px-3 py-1.5">
-            <span className="flex h-5 w-5 items-center justify-center bg-black text-xs font-bold text-white">
-              {user.name.charAt(0).toUpperCase()}
-            </span>
-            <span className="text-xs font-semibold text-black max-w-[100px] truncate">
-              {user.name.split(' ')[0]}
-            </span>
-          </div>
-          <button
-            id="nav-logout"
-            onClick={onLogout}
-            className="h-8 px-3 text-xs font-bold uppercase tracking-widest text-neutral-500 border border-neutral-200 hover:border-black hover:text-black hover:bg-black hover:text-white transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
-    </header>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────
 // Main Dashboard
 // ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, loading: authLoading, logout } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { posts, hydrated } = usePosts()
 
   // Auth guard
@@ -430,15 +344,6 @@ export default function DashboardPage() {
         p.category.toLowerCase().includes(q)
     )
   }, [posts, search])
-
-  const handleLogout = useCallback(() => {
-    logout()
-    router.push('/')
-  }, [logout, router])
-
-  const handleCreateBlog = useCallback(() => {
-    router.push('/editor')
-  }, [router])
 
   // Loading skeleton
   if (authLoading || !user || !hydrated) {
@@ -467,8 +372,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen flex-col bg-white overflow-hidden">
-      {/* Top Navbar */}
-      <DashboardNav user={user} onLogout={handleLogout} onCreateBlog={handleCreateBlog} />
+      <AppHeader />
 
       {/* Body: feed + reader */}
       <div className="flex flex-1 overflow-hidden">
@@ -542,16 +446,16 @@ export default function DashboardPage() {
             <span className="text-xs text-neutral-400">
               {posts.length} total post{posts.length !== 1 ? 's' : ''}
             </span>
-            <button
+            <a
               id="dashboard-create-cta"
-              onClick={handleCreateBlog}
+              href="/editor"
               className="flex items-center gap-1 text-xs font-bold text-black border border-black px-2.5 py-1 hover:bg-black hover:text-white transition-colors"
             >
               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
               Write
-            </button>
+            </a>
           </div>
         </aside>
 

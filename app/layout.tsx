@@ -26,7 +26,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-white text-black">
+      <body className="bg-white text-black antialiased">
         <AuthProvider>
           <ConditionalChrome>{children}</ConditionalChrome>
         </AuthProvider>

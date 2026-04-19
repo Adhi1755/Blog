@@ -106,7 +106,7 @@ export default function RegisterPage() {
   )
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-16 bg-white">
+    <div className="flex min-h-screen items-center justify-center px-4 py-16 bg-white">
       <div className="w-full max-w-md">
         {/* Card */}
         <div className="border border-neutral-200 bg-white p-8 sm:p-10">
