@@ -14,12 +14,12 @@ export default function NewsletterForm() {
         type="email"
         required
         placeholder="your@email.com"
-        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 backdrop-blur-sm transition-colors duration-200 focus:border-violet-500/60 focus:outline-none focus:ring-2 focus:ring-violet-500/20 sm:w-64"
+        className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm text-black placeholder-neutral-400 outline-none transition-colors duration-200 focus:border-black sm:w-64"
       />
       <button
         id="newsletter-subscribe"
         type="submit"
-        className="shrink-0 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all duration-200 hover:from-violet-500 hover:to-indigo-500"
+        className="shrink-0 border border-black bg-black px-5 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-neutral-800"
       >
         Subscribe
       </button>

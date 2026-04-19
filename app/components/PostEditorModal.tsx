@@ -85,6 +85,10 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
     if (e.target === backdropRef.current) onClose()
   }
 
+  const inputBase = "w-full border bg-white px-4 py-3 text-sm text-black placeholder-neutral-400 outline-none transition-all"
+  const inputNormal = "border-neutral-200 focus:border-black"
+  const inputError = "border-neutral-400 focus:border-black"
+
   return (
     <div
       ref={backdropRef}
@@ -92,17 +96,17 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
       role="dialog"
       aria-modal="true"
       aria-label={mode === 'add' ? 'New post' : 'Edit post'}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
     >
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/10 bg-gray-900 shadow-2xl shadow-black/60">
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-neutral-200 bg-white shadow-2xl shadow-black/10">
 
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-gray-900/95 px-8 py-5 backdrop-blur-sm">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white px-8 py-5">
           <div>
-            <h2 className="text-lg font-bold text-white">
+            <h2 className="text-lg font-black text-black">
               {mode === 'add' ? 'New Post' : 'Edit Post'}
             </h2>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-neutral-500 mt-0.5">
               {mode === 'add' ? 'Fill in the details to create a new post' : 'Update the post details below'}
             </p>
           </div>
@@ -111,7 +115,7 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
             type="button"
             onClick={onClose}
             aria-label="Close editor"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center border border-neutral-200 text-neutral-400 transition-colors hover:border-black hover:bg-black hover:text-white"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -124,8 +128,8 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
 
           {/* Title */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="editor-title" className="text-sm font-medium text-gray-300">
-              Title <span className="text-red-400">*</span>
+            <label htmlFor="editor-title" className="text-sm font-semibold text-black">
+              Title <span className="text-neutral-400 font-normal">*</span>
             </label>
             <input
               id="editor-title"
@@ -135,14 +139,10 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
               onChange={(e) => set('title', e.target.value)}
               placeholder="Enter a compelling post title…"
               aria-invalid={!!errors.title}
-              className={`w-full rounded-xl border bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:ring-2 ${
-                errors.title
-                  ? 'border-red-500/60 focus:ring-red-500/20'
-                  : 'border-white/10 focus:border-violet-500/60 focus:ring-violet-500/20'
-              }`}
+              className={`${inputBase} ${errors.title ? inputError : inputNormal}`}
             />
             {errors.title && (
-              <p role="alert" className="flex items-center gap-1 text-xs text-red-400">
+              <p role="alert" className="flex items-center gap-1 text-xs text-black font-medium">
                 <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
@@ -154,10 +154,10 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
           {/* Excerpt */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor="editor-excerpt" className="text-sm font-medium text-gray-300">
-                Excerpt / Content <span className="text-red-400">*</span>
+              <label htmlFor="editor-excerpt" className="text-sm font-semibold text-black">
+                Excerpt / Content <span className="text-neutral-400 font-normal">*</span>
               </label>
-              <span className="text-xs text-gray-600">{draft.excerpt.length} chars</span>
+              <span className="text-xs text-neutral-400">{draft.excerpt.length} chars</span>
             </div>
             <textarea
               id="editor-excerpt"
@@ -166,14 +166,10 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
               onChange={(e) => set('excerpt', e.target.value)}
               placeholder="Write a short description or the body of your post…"
               aria-invalid={!!errors.excerpt}
-              className={`w-full resize-y rounded-xl border bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:ring-2 ${
-                errors.excerpt
-                  ? 'border-red-500/60 focus:ring-red-500/20'
-                  : 'border-white/10 focus:border-violet-500/60 focus:ring-violet-500/20'
-              }`}
+              className={`w-full resize-y border bg-white px-4 py-3 text-sm text-black placeholder-neutral-400 outline-none transition-all ${errors.excerpt ? inputError : inputNormal}`}
             />
             {errors.excerpt && (
-              <p role="alert" className="flex items-center gap-1 text-xs text-red-400">
+              <p role="alert" className="flex items-center gap-1 text-xs text-black font-medium">
                 <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
@@ -186,7 +182,7 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {/* Category */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="editor-category" className="text-sm font-medium text-gray-300">
+              <label htmlFor="editor-category" className="text-sm font-semibold text-black">
                 Category
               </label>
               <select
@@ -197,7 +193,7 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
                   set('category', e.target.value)
                   set('categoryColor', found?.color ?? 'violet')
                 }}
-                className="w-full rounded-xl border border-white/10 bg-gray-800 px-4 py-3 text-sm text-white outline-none transition-all focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20"
+                className="w-full border border-neutral-200 bg-white px-4 py-3 text-sm text-black outline-none transition-all focus:border-black"
               >
                 {CATEGORY_OPTIONS.map((c) => (
                   <option key={c.label} value={c.label}>{c.label}</option>
@@ -207,8 +203,8 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
 
             {/* Author */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="editor-author" className="text-sm font-medium text-gray-300">
-                Author name <span className="text-red-400">*</span>
+              <label htmlFor="editor-author" className="text-sm font-semibold text-black">
+                Author name <span className="text-neutral-400 font-normal">*</span>
               </label>
               <input
                 id="editor-author"
@@ -217,14 +213,10 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
                 onChange={(e) => set('authorName', e.target.value)}
                 placeholder="Your name"
                 aria-invalid={!!errors.authorName}
-                className={`w-full rounded-xl border bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:ring-2 ${
-                  errors.authorName
-                    ? 'border-red-500/60 focus:ring-red-500/20'
-                    : 'border-white/10 focus:border-violet-500/60 focus:ring-violet-500/20'
-                }`}
+                className={`${inputBase} ${errors.authorName ? inputError : inputNormal}`}
               />
               {errors.authorName && (
-                <p role="alert" className="flex items-center gap-1 text-xs text-red-400">
+                <p role="alert" className="flex items-center gap-1 text-xs text-black font-medium">
                   <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
@@ -235,22 +227,22 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
           </div>
 
           {/* Featured toggle */}
-          <label className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/5 px-5 py-4">
+          <label className="flex cursor-pointer items-center justify-between border border-neutral-200 bg-neutral-50 px-5 py-4">
             <div>
-              <p className="text-sm font-medium text-gray-200">Mark as Featured</p>
-              <p className="text-xs text-gray-500">Featured posts appear prominently at the top of the grid</p>
+              <p className="text-sm font-semibold text-black">Mark as Featured</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Featured posts appear prominently at the top of the grid</p>
             </div>
             <div
               role="switch"
               id="editor-featured"
               aria-checked={draft.featured}
               onClick={() => set('featured', !draft.featured)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-                draft.featured ? 'bg-violet-600' : 'bg-white/20'
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                draft.featured ? 'bg-black' : 'bg-neutral-200'
               }`}
             >
               <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
+                className={`inline-block h-5 w-5 transform bg-white shadow-sm transition-transform duration-200 ${
                   draft.featured ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
@@ -258,12 +250,12 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
           </label>
 
           {/* Footer buttons */}
-          <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-4">
+          <div className="flex items-center justify-end gap-3 border-t border-neutral-200 pt-4">
             <button
               id="editor-cancel"
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-gray-300 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+              className="border border-neutral-200 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-600 transition-all hover:border-neutral-400 hover:bg-neutral-50 hover:text-black"
             >
               Cancel
             </button>
@@ -271,7 +263,7 @@ export default function PostEditorModal({ mode, post, onSave, onClose }: PostEdi
               id="editor-save"
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:from-violet-500 hover:to-indigo-500 disabled:opacity-70"
+              className="flex items-center gap-2 border border-black bg-black px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-neutral-800 disabled:opacity-70"
             >
               {saving ? (
                 <>

@@ -20,28 +20,23 @@ const footerLinks = {
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-gray-950">
-      <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="border-t border-neutral-200 bg-neutral-50">
+      <div className="mx-auto max-w-7xl px-6 py-14 lg:py-16">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
+
           {/* Brand column */}
-          <div className="flex flex-col gap-4">
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-lg font-bold text-white"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-black text-white">
+          <div className="flex flex-col gap-5">
+            <Link href="/" className="flex items-center gap-2.5">
+              <span className="flex h-7 w-7 items-center justify-center border border-black bg-black text-xs font-black text-white">
                 B
               </span>
-              <span className="bg-gradient-to-r from-violet-400 to-indigo-300 bg-clip-text text-transparent">
-                BlogSpace
-              </span>
+              <span className="text-sm font-bold tracking-tight text-black">BlogSpace</span>
             </Link>
-            <p className="max-w-xs text-sm leading-relaxed text-gray-500">
-              A modern platform to share your thoughts, stories, and ideas with
-              the world.
+            <p className="max-w-xs text-sm leading-relaxed text-neutral-500">
+              A modern platform to share your thoughts, stories, and ideas with the world.
             </p>
             {/* Social icons */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {[
                 {
                   label: 'GitHub',
@@ -66,7 +61,7 @@ export default function Footer() {
                   key={label}
                   href={href}
                   aria-label={label}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-gray-500 transition-all duration-200 hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-400"
+                  className="flex h-8 w-8 items-center justify-center border border-neutral-200 text-neutral-400 transition-all duration-150 hover:border-black hover:text-black hover:bg-white"
                 >
                   {icon}
                 </a>
@@ -77,15 +72,15 @@ export default function Footer() {
           {/* Link columns */}
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category} className="flex flex-col gap-4">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">
                 {category}
               </h3>
-              <ul className="flex flex-col gap-2.5">
+              <ul className="flex flex-col gap-3">
                 {links.map(({ label, href }) => (
                   <li key={label}>
                     <Link
                       href={href}
-                      className="text-sm text-gray-400 transition-colors duration-200 hover:text-violet-300"
+                      className="text-sm text-neutral-500 transition-colors duration-150 hover:text-black"
                     >
                       {label}
                     </Link>
@@ -97,14 +92,12 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-8 sm:flex-row">
-          <p className="text-xs text-gray-600">
+        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-neutral-200 pt-8 sm:flex-row">
+          <p className="text-xs text-neutral-400">
             &copy; {new Date().getFullYear()} BlogSpace. All rights reserved.
           </p>
-          <p className="text-xs text-gray-600">
-            Built with{' '}
-            <span className="text-violet-500">♥</span>
-            {' '}using Next.js &amp; Tailwind CSS
+          <p className="text-xs text-neutral-400">
+            Built with Next.js &amp; Tailwind CSS
           </p>
         </div>
       </div>
