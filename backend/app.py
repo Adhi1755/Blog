@@ -16,7 +16,7 @@ app = Flask(__name__)
 
 # Origins that are allowed to call the API.
 # Override with CORS_ORIGINS env var (comma-separated) in production.
-_default_origins = "http://localhost:3000"
+_default_origins = "http://localhost:3000,https://blog-five-xi-40.vercel.app"
 _cors_origins = os.environ.get("CORS_ORIGINS", _default_origins).split(",")
 
 CORS(
