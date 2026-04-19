@@ -5,6 +5,14 @@ export type ContentBlock =
   | { type: 'tip'; text: string }
   | { type: 'list'; items: string[] }
 
+export type Comment = {
+  id: string
+  authorName: string
+  authorInitials: string
+  text: string
+  date: string
+}
+
 export type Post = {
   slug: string
   title: string
@@ -13,6 +21,11 @@ export type Post = {
   readTime: string
   category: string
   categoryColor: string
+  thumbnail?: string
+  tags?: string[]
+  likes?: number
+  views?: number
+  comments?: Comment[]
   author: {
     name: string
     initials: string
@@ -32,6 +45,11 @@ export const posts: Post[] = [
     readTime: '8 min read',
     category: 'Next.js',
     categoryColor: 'violet',
+    thumbnail: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&q=80',
+    tags: ['Next.js', 'React', 'Performance', 'App Router'],
+    likes: 142,
+    views: 3840,
+    comments: [],
     author: { name: 'Adithyan R', initials: 'AR', avatarColor: 'from-violet-500 to-indigo-600' },
     featured: true,
     body: [
@@ -53,11 +71,16 @@ export const posts: Post[] = [
     slug: 'tailwind-css-v4-deep-dive',
     title: 'Tailwind CSS v4 — What Changed and Why It Matters',
     excerpt:
-      'Tailwind v4 drops the config file and embraces CSS-first configuration. Here\'s everything you need to know to migrate your project without breaking a sweat.',
+      "Tailwind v4 drops the config file and embraces CSS-first configuration. Here's everything you need to know to migrate your project without breaking a sweat.",
     date: 'Apr 15, 2026',
     readTime: '6 min read',
     category: 'CSS',
     categoryColor: 'sky',
+    thumbnail: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80',
+    tags: ['CSS', 'Tailwind', 'Design Systems', 'Frontend'],
+    likes: 98,
+    views: 2210,
+    comments: [],
     author: { name: 'Priya M', initials: 'PM', avatarColor: 'from-sky-500 to-cyan-600' },
     body: [
       { type: 'paragraph', text: 'Tailwind CSS v4 is the most significant rewrite since the framework launched. The team has moved configuration out of JavaScript and into CSS itself — meaning zero config files, faster builds via the new Rust-based engine (Oxide), and a dramatically smaller output bundle.' },
@@ -80,12 +103,17 @@ export const posts: Post[] = [
     readTime: '10 min read',
     category: 'TypeScript',
     categoryColor: 'blue',
+    thumbnail: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&q=80',
+    tags: ['TypeScript', 'Type Safety', 'Patterns', 'Best Practices'],
+    likes: 201,
+    views: 5120,
+    comments: [],
     author: { name: 'Kiran S', initials: 'KS', avatarColor: 'from-blue-500 to-blue-700' },
     body: [
       { type: 'paragraph', text: 'TypeScript continues to evolve at a rapid pace. TypeScript 5.x introduced a string of quality-of-life improvements — const type parameters, variadic tuple improvements, and the `satisfies` operator — that meaningfully change how experts write day-to-day type-safe code.' },
       { type: 'heading', text: '1. Use `satisfies` Instead of Type Assertions' },
       { type: 'paragraph', text: 'The `satisfies` operator lets you validate a value against a type while preserving the most specific inferred type. This catches errors at the definition site rather than at the use site.' },
-      { type: 'code', language: 'ts', code: 'type Route = \'home\' | \'about\' | \'blog\'\n\n// Bad: loses the specific string literal types\nconst routes: Record<Route, string> = {\n  home: \'/\',\n  about: \'/about\',\n  blog: \'/blog\',\n}\n\n// Good: keeps literal types AND validates the shape\nconst routes = {\n  home: \'/\',\n  about: \'/about\',\n  blog: \'/blog\',\n} satisfies Record<Route, string>' },
+      { type: 'code', language: 'ts', code: "type Route = 'home' | 'about' | 'blog'\n\n// Bad: loses the specific string literal types\nconst routes: Record<Route, string> = {\n  home: '/',\n  about: '/about',\n  blog: '/blog',\n}\n\n// Good: keeps literal types AND validates the shape\nconst routes = {\n  home: '/',\n  about: '/about',\n  blog: '/blog',\n} satisfies Record<Route, string>" },
       { type: 'heading', text: '2. Template Literal Types for Strict String APIs' },
       { type: 'paragraph', text: 'Template literal types allow you to construct new string types by combining existing ones. They are especially useful for event names, CSS class strings, and API endpoint patterns.' },
       { type: 'code', language: 'ts', code: "type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'\ntype ApiPath = '/users' | '/posts' | '/comments'\ntype Endpoint = `${HTTPMethod} ${ApiPath}`\n\n// Valid: 'GET /users', 'POST /posts', etc.\n// Invalid: 'PATCH /users' — caught at compile time\nfunction call(endpoint: Endpoint) { /* ... */ }" },
@@ -103,6 +131,11 @@ export const posts: Post[] = [
     readTime: '12 min read',
     category: 'React',
     categoryColor: 'cyan',
+    thumbnail: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&q=80',
+    tags: ['React', 'RSC', 'Performance', 'Architecture'],
+    likes: 175,
+    views: 4300,
+    comments: [],
     author: { name: 'Meera J', initials: 'MJ', avatarColor: 'from-cyan-500 to-teal-600' },
     body: [
       { type: 'paragraph', text: 'React Server Components (RSC) shipped as stable in React 19 and are now the default in Next.js App Router. They represent the biggest architectural shift in React since hooks. Understanding where the server/client boundary lives — and how to use it strategically — is the most important skill for React developers in 2026.' },
@@ -125,6 +158,11 @@ export const posts: Post[] = [
     readTime: '7 min read',
     category: 'Backend',
     categoryColor: 'emerald',
+    thumbnail: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80',
+    tags: ['Backend', 'API', 'tRPC', 'REST', 'TypeScript'],
+    likes: 88,
+    views: 1975,
+    comments: [],
     author: { name: 'Rahul D', initials: 'RD', avatarColor: 'from-emerald-500 to-green-600' },
     body: [
       { type: 'paragraph', text: 'For years REST was the unquestioned default for web APIs. Then GraphQL arrived and promised type-safe, flexible queries. Now tRPC offers a third path: end-to-end type safety without schemas, code generation, or a query language. So which should you reach for in 2026?' },
@@ -146,6 +184,11 @@ export const posts: Post[] = [
     readTime: '9 min read',
     category: 'Database',
     categoryColor: 'orange',
+    thumbnail: 'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=800&q=80',
+    tags: ['Database', 'PostgreSQL', 'Search', 'Performance'],
+    likes: 113,
+    views: 2680,
+    comments: [],
     author: { name: 'Sneha K', initials: 'SK', avatarColor: 'from-orange-500 to-amber-600' },
     body: [
       { type: 'paragraph', text: 'Most developers reach for Elasticsearch or Algolia the moment they need search. But for the vast majority of applications, Postgres full-text search is more than capable — and it eliminates an entire infrastructure dependency.' },

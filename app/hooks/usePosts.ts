@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { posts as seedPosts, type Post } from '../data/posts'
+import { posts as seedPosts, type Post, type Comment } from '../data/posts'
 
 // ── Helpers ──────────────────────────────────────────────────
 const STORAGE_KEY = 'blogspace_posts'
@@ -36,7 +36,6 @@ function loadPosts(): Post[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw) as Post[]
-    // First visit: seed from static data
     localStorage.setItem(STORAGE_KEY, JSON.stringify(seedPosts))
     return seedPosts
   } catch {
@@ -60,6 +59,9 @@ export type DraftPost = {
   categoryColor: string
   authorName: string
   featured: boolean
+  thumbnail?: string
+  tags?: string[]
+  content?: string
 }
 
 export const CATEGORY_OPTIONS: { label: string; color: string }[] = [
@@ -76,13 +78,11 @@ export function usePosts() {
   const [posts, setPosts] = useState<Post[]>([])
   const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate from localStorage after mount
   useEffect(() => {
     setPosts(loadPosts())
     setHydrated(true)
   }, [])
 
-  // Persist on every change (skip the pre-hydration empty state)
   useEffect(() => {
     if (hydrated) savePosts(posts)
   }, [posts, hydrated])
@@ -95,15 +95,6 @@ export function usePosts() {
       .slice(0, 2)
       .join('')
 
-    const colorMap: Record<string, string> = {
-      violet: 'from-violet-500 to-indigo-600',
-      cyan: 'from-cyan-500 to-teal-600',
-      blue: 'from-blue-500 to-blue-700',
-      sky: 'from-sky-500 to-cyan-600',
-      emerald: 'from-emerald-500 to-green-600',
-      orange: 'from-orange-500 to-amber-600',
-    }
-
     const newPost: Post = {
       slug: `${slugify(draft.title)}-${Date.now()}`,
       title: draft.title.trim(),
@@ -113,11 +104,19 @@ export function usePosts() {
       category: draft.category,
       categoryColor: draft.categoryColor,
       featured: draft.featured,
+      thumbnail: draft.thumbnail || undefined,
+      tags: draft.tags || [],
+      likes: 0,
+      views: 0,
+      comments: [],
       author: {
         name: draft.authorName.trim() || 'Anonymous',
         initials: initials || 'AN',
-        avatarColor: colorMap[draft.categoryColor] ?? colorMap.violet,
+        avatarColor: 'from-neutral-600 to-neutral-800',
       },
+      body: draft.content
+        ? [{ type: 'paragraph', text: draft.content }]
+        : undefined,
     }
     setPosts((prev) => [newPost, ...prev])
     return newPost
@@ -133,14 +132,6 @@ export function usePosts() {
           .map((w) => w[0]?.toUpperCase() ?? '')
           .slice(0, 2)
           .join('')
-        const colorMap: Record<string, string> = {
-          violet: 'from-violet-500 to-indigo-600',
-          cyan: 'from-cyan-500 to-teal-600',
-          blue: 'from-blue-500 to-blue-700',
-          sky: 'from-sky-500 to-cyan-600',
-          emerald: 'from-emerald-500 to-green-600',
-          orange: 'from-orange-500 to-amber-600',
-        }
         return {
           ...p,
           title: draft.title.trim(),
@@ -149,10 +140,15 @@ export function usePosts() {
           categoryColor: draft.categoryColor,
           featured: draft.featured,
           readTime: estimateReadTime(draft.excerpt),
+          thumbnail: draft.thumbnail ?? p.thumbnail,
+          tags: draft.tags ?? p.tags,
+          body: draft.content
+            ? [{ type: 'paragraph' as const, text: draft.content }]
+            : p.body,
           author: {
             name: draft.authorName.trim() || p.author.name,
             initials: initials || p.author.initials,
-            avatarColor: colorMap[draft.categoryColor] ?? p.author.avatarColor,
+            avatarColor: p.author.avatarColor,
           },
         }
       })
@@ -163,9 +159,50 @@ export function usePosts() {
     setPosts((prev) => prev.filter((p) => p.slug !== slug))
   }, [])
 
+  const likePost = useCallback((slug: string) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.slug === slug ? { ...p, likes: (p.likes ?? 0) + 1 } : p
+      )
+    )
+  }, [])
+
+  const addComment = useCallback((slug: string, comment: Omit<Comment, 'id' | 'date'>) => {
+    const newComment: Comment = {
+      id: `${Date.now()}`,
+      date: todayLabel(),
+      ...comment,
+    }
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.slug === slug
+          ? { ...p, comments: [...(p.comments ?? []), newComment] }
+          : p
+      )
+    )
+  }, [])
+
+  const incrementViews = useCallback((slug: string) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.slug === slug ? { ...p, views: (p.views ?? 0) + 1 } : p
+      )
+    )
+  }, [])
+
   const resetToSeed = useCallback(() => {
     setPosts(seedPosts)
   }, [])
 
-  return { posts, hydrated, addPost, updatePost, deletePost, resetToSeed }
+  return {
+    posts,
+    hydrated,
+    addPost,
+    updatePost,
+    deletePost,
+    likePost,
+    addComment,
+    incrementViews,
+    resetToSeed,
+  }
 }

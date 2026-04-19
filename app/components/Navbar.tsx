@@ -18,19 +18,22 @@ export default function Navbar() {
   }
 
   const publicLinks = [{ label: 'Home', href: '/' }]
-  const authLinks = [{ label: 'Dashboard', href: '/dashboard' }]
+  const authLinks = [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Profile', href: '/profile' },
+  ]
   const visibleLinks = user ? [...publicLinks, ...authLinks] : publicLinks
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-white">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
           <span className="flex h-8 w-8 items-center justify-center border border-black bg-black text-xs font-black text-white transition-colors duration-200 group-hover:bg-neutral-800">
             B
           </span>
-          <span className="text-base font-bold tracking-tight text-black transition-colors group-hover:text-neutral-600">
+          <span className="text-base font-black tracking-tight text-black transition-colors group-hover:text-neutral-600">
             BlogSpace
           </span>
         </Link>
@@ -61,27 +64,32 @@ export default function Navbar() {
 
         {/* Desktop right-side CTA */}
         {!loading && (
-          <div className="hidden items-center gap-2.5 md:flex">
+          <div className="hidden items-center gap-2 md:flex">
             {user ? (
               <>
+                <Link
+                  href="/editor"
+                  className="flex items-center gap-1.5 border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-700 transition-all hover:border-black hover:bg-black hover:text-white"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Write
+                </Link>
                 {/* User chip */}
-                <div className="flex items-center gap-2 border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm">
+                <Link href="/profile" className="flex items-center gap-2 border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm transition-all hover:border-neutral-400">
                   <span className="flex h-5 w-5 items-center justify-center bg-black text-xs font-bold text-white">
                     {user.name.charAt(0).toUpperCase()}
                   </span>
                   <span className="max-w-[100px] truncate font-medium text-neutral-700">
                     {user.name.split(' ')[0]}
                   </span>
-                </div>
-                {/* Logout */}
+                </Link>
                 <button
                   id="navbar-logout"
                   onClick={handleLogout}
-                  className="flex items-center gap-1.5 border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-500 transition-all duration-150 hover:border-neutral-400 hover:bg-neutral-50 hover:text-black"
+                  className="border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-500 transition-all duration-150 hover:border-neutral-400 hover:bg-neutral-50 hover:text-black"
                 >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                  </svg>
                   Sign out
                 </button>
               </>
@@ -119,8 +127,8 @@ export default function Navbar() {
       </nav>
 
       {/* Mobile menu */}
-      <div className={`overflow-hidden border-t border-neutral-100 transition-all duration-200 ease-in-out md:hidden ${menuOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="flex flex-col gap-1 px-4 py-3">
+      <div className={`overflow-hidden border-t border-neutral-100 transition-all duration-200 md:hidden ${menuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="flex flex-col px-4 py-3">
           {visibleLinks.map(({ label, href }) => {
             const isActive = pathname === href
             return (
@@ -136,6 +144,18 @@ export default function Navbar() {
               </Link>
             )
           })}
+          {user && (
+            <Link
+              href="/editor"
+              onClick={() => setMenuOpen(false)}
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-semibold text-black hover:bg-neutral-50"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Write a post
+            </Link>
+          )}
         </div>
 
         {!loading && (
@@ -164,7 +184,7 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMenuOpen(false)}
-                  className="w-full border border-neutral-200 py-2.5 text-center text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 hover:text-black"
+                  className="w-full border border-neutral-200 py-2.5 text-center text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50"
                 >
                   Sign in
                 </Link>
