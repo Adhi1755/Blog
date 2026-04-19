@@ -6,17 +6,13 @@ on:
   pull_request:
     branches: ["main", "dev"]
 
-# Opt into Node.js 24 for all action runners now
-# (actions/checkout, setup-node, setup-python etc. ship Node.js 20 binaries
-#  by default; this flag forces them onto Node.js 24 ahead of the June 2026 deadline)
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   # ── Frontend (Next.js) ─────────────────────────────────────────
   frontend:
     name: Frontend – Lint & Build
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repository
@@ -38,13 +34,14 @@ jobs:
       - name: Build Next.js app
         run: npm run build
         env:
-          # Silence telemetry in CI
           NEXT_TELEMETRY_DISABLED: 1
 
   # ── Backend (Flask / Python) ────────────────────────────────────
   backend:
     name: Backend – Install & Lint
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repository
