@@ -82,14 +82,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading])
 
-  // ── Login ───────────────────────────────────────────────────
+  // ── Login ───────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string) => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10_000)
     try {
       const res = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
       const data = await res.json()
       if (!res.ok) return { error: data.error ?? 'Login failed' }
 
@@ -98,19 +102,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(TOKEN_KEY, data.token)
       localStorage.setItem(USER_KEY, JSON.stringify(data.user))
       return {}
-    } catch {
-      return { error: 'Cannot reach the server. Is the backend running?' }
+    } catch (err) {
+      clearTimeout(timeout)
+      if (err instanceof Error && err.name === 'AbortError') {
+        return { error: 'Request timed out — the server may be starting up, please try again in a moment.' }
+      }
+      return { error: 'Unable to reach the server. Please check your connection or try again shortly.' }
     }
   }, [])
 
-  // ── Register ────────────────────────────────────────────────
+  // ── Register ──────────────────────────────────────────────
   const register = useCallback(async (name: string, email: string, password: string) => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10_000)
     try {
       const res = await fetch(`${API}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
       const data = await res.json()
       if (!res.ok) return { error: data.error ?? 'Registration failed' }
 
@@ -119,8 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(TOKEN_KEY, data.token)
       localStorage.setItem(USER_KEY, JSON.stringify(data.user))
       return {}
-    } catch {
-      return { error: 'Cannot reach the server. Is the backend running?' }
+    } catch (err) {
+      clearTimeout(timeout)
+      if (err instanceof Error && err.name === 'AbortError') {
+        return { error: 'Request timed out — the server may be starting up, please try again in a moment.' }
+      }
+      return { error: 'Unable to reach the server. Please check your connection or try again shortly.' }
     }
   }, [])
 
