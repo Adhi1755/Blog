@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { posts as seedPosts, type Post, type Comment } from '../data/posts'
+import { parseMarkdownToBlocks } from '../utils/markdown'
 
 // ── Helpers ──────────────────────────────────────────────────
 const STORAGE_KEY = 'blogspace_posts'
@@ -114,9 +115,7 @@ export function usePosts() {
         initials: initials || 'AN',
         avatarColor: 'from-neutral-600 to-neutral-800',
       },
-      body: draft.content
-        ? [{ type: 'paragraph', text: draft.content }]
-        : undefined,
+      body: draft.content ? parseMarkdownToBlocks(draft.content) : undefined,
     }
     setPosts((prev) => [newPost, ...prev])
     return newPost
@@ -142,9 +141,7 @@ export function usePosts() {
           readTime: estimateReadTime(draft.excerpt),
           thumbnail: draft.thumbnail ?? p.thumbnail,
           tags: draft.tags ?? p.tags,
-          body: draft.content
-            ? [{ type: 'paragraph' as const, text: draft.content }]
-            : p.body,
+          body: draft.content ? parseMarkdownToBlocks(draft.content) : p.body,
           author: {
             name: draft.authorName.trim() || p.author.name,
             initials: initials || p.author.initials,

@@ -6,6 +6,7 @@ import type { Post, ContentBlock } from '../data/posts'
 import { usePosts } from '../hooks/usePosts'
 import { useAuth } from '../context/AuthContext'
 import AppHeader from '../components/AppHeader'
+import { renderInline } from '../utils/markdown'
 
 // ─────────────────────────────────────────────────────────────
 // Content block renderer (full-read view)
@@ -18,13 +19,13 @@ function ContentRenderer({ blocks }: { blocks: ContentBlock[] }) {
           case 'paragraph':
             return (
               <p key={i} className="text-sm leading-7 text-black">
-                {block.text}
+                {renderInline(block.text)}
               </p>
             )
           case 'heading':
             return (
               <h3 key={i} className="mt-6 mb-2 text-base font-black text-black tracking-tight border-l-2 border-black pl-3">
-                {block.text}
+                {renderInline(block.text)}
               </h3>
             )
           case 'code':
@@ -46,7 +47,7 @@ function ContentRenderer({ blocks }: { blocks: ContentBlock[] }) {
                 <p className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-1">
                   Tip
                 </p>
-                <p className="text-sm leading-6 text-white">{block.text}</p>
+                <p className="text-sm leading-6 text-white">{renderInline(block.text)}</p>
               </div>
             )
           case 'list':
@@ -55,7 +56,7 @@ function ContentRenderer({ blocks }: { blocks: ContentBlock[] }) {
                 {block.items.map((item, j) => (
                   <li key={j} className="flex items-start gap-3 text-sm text-black leading-6">
                     <span className="mt-2 h-1 w-1 shrink-0 bg-black" />
-                    {item}
+                    <span>{renderInline(item)}</span>
                   </li>
                 ))}
               </ul>

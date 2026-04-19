@@ -26,6 +26,52 @@ export default function EditorPage() {
   const [saved, setSaved] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const titleRef = useRef<HTMLInputElement>(null)
+  const contentRef = useRef<HTMLTextAreaElement>(null)
+
+  function insertFormatting(type: string) {
+    if (!contentRef.current) return
+    const textarea = contentRef.current
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selected = content.slice(start, end)
+    
+    let before = ''
+    let after = ''
+    
+    switch (type) {
+      case 'Heading':
+        before = '### '
+        break
+      case 'Bold':
+        before = '**'
+        after = '**'
+        break
+      case 'Italic':
+        before = '_'
+        after = '_'
+        break
+      case 'List':
+        before = '- '
+        break
+      case 'Code':
+        before = '`'
+        after = '`'
+        break
+      case 'Link':
+        before = '['
+        after = '](https://)'
+        break
+    }
+
+    const newText = content.slice(0, start) + before + selected + after + content.slice(end)
+    setContent(newText)
+    
+    // reset focus and selection
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + before.length, start + before.length + selected.length)
+    }, 0)
+  }
 
   // Auth guard
   useEffect(() => {
@@ -214,16 +260,25 @@ export default function EditorPage() {
                   <label htmlFor="editor-content" className="text-xs font-bold uppercase tracking-widest text-neutral-400">Content</label>
                   <span className="text-xs text-neutral-400">{content.length} chars</span>
                 </div>
-                {/* Toolbar hint */}
+                {/* Toolbar buttons */}
                 <div className="flex gap-2 border border-b-0 border-neutral-200 bg-neutral-50 px-3 py-2">
                   {['Heading', 'Bold', 'Italic', 'List', 'Code', 'Link'].map((t) => (
-                    <span key={t} className="text-xs text-neutral-400 font-medium border border-neutral-200 px-2 py-0.5 bg-white">
+                    <button
+                      key={t}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        insertFormatting(t)
+                      }}
+                      className="text-xs text-neutral-600 font-medium border border-neutral-200 px-2 py-0.5 bg-white hover:border-black hover:text-black transition-colors"
+                    >
                       {t}
-                    </span>
+                    </button>
                   ))}
                 </div>
                 <textarea
                   id="editor-content"
+                  ref={contentRef}
                   rows={18}
                   value={content}
                   onChange={(e) => { setContent(e.target.value); setErrors((prev) => ({ ...prev, content: '' })) }}

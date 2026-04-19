@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { posts as seedPosts, type Post, type ContentBlock } from '../../data/posts'
 import { usePosts } from '../../hooks/usePosts'
 import { useAuth } from '../../context/AuthContext'
+import { renderInline } from '../../utils/markdown'
 
 const STORAGE_KEY = 'blogspace_posts'
 
@@ -23,9 +24,9 @@ function getPostBySlug(slug: string): Post | null {
 function RenderBlock({ block }: { block: ContentBlock }) {
   switch (block.type) {
     case 'paragraph':
-      return <p className="text-base leading-8 text-neutral-600">{block.text}</p>
+      return <p className="text-base leading-8 text-neutral-600">{renderInline(block.text)}</p>
     case 'heading':
-      return <h2 className="mt-10 text-xl font-black text-black sm:text-2xl">{block.text}</h2>
+      return <h2 className="mt-10 text-xl font-black text-black sm:text-2xl">{renderInline(block.text)}</h2>
     case 'code':
       return (
         <div className="overflow-hidden border border-neutral-200">
@@ -51,7 +52,7 @@ function RenderBlock({ block }: { block: ContentBlock }) {
             </svg>
             Pro Tip
           </div>
-          <p className="text-sm leading-7 text-neutral-600">{block.text}</p>
+          <p className="text-sm leading-7 text-neutral-600">{renderInline(block.text)}</p>
         </div>
       )
     case 'list':
@@ -60,7 +61,7 @@ function RenderBlock({ block }: { block: ContentBlock }) {
           {block.items.map((item, i) => (
             <li key={i} className="flex items-start gap-3 text-base text-neutral-600">
               <span className="mt-2.5 h-1.5 w-1.5 shrink-0 bg-black" />
-              {item}
+              <span>{renderInline(item)}</span>
             </li>
           ))}
         </ul>
