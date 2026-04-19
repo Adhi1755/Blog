@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Post } from '../data/posts'
 import { usePosts, type DraftPost, CATEGORY_OPTIONS } from '../hooks/usePosts'
 import PostEditorModal from '../components/PostEditorModal'
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog'
+import { useAuth } from '../context/AuthContext'
 
 // ── Tiny stat card ────────────────────────────────────────────
 function StatCard({
@@ -119,7 +121,16 @@ function PostRow({
 
 // ── Main Dashboard ────────────────────────────────────────────
 export default function DashboardPage() {
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const { posts, hydrated, addPost, updatePost, deletePost, resetToSeed } = usePosts()
+
+  // ── Auth guard: redirect to /login if not authenticated ──
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login')
+    }
+  }, [authLoading, user, router])
 
   // UI state
   const [editorOpen, setEditorOpen] = useState(false)
@@ -186,8 +197,8 @@ export default function DashboardPage() {
     setDeleteTarget(null)
   }
 
-  // ── Skeleton ─────────────────────────────────────────────
-  if (!hydrated) {
+  // ── Loading / auth skeleton ───────────────────────────
+  if (authLoading || !user || !hydrated) {
     return (
       <div className="mx-auto max-w-7xl px-6 py-12">
         <div className="animate-pulse space-y-4">
@@ -236,7 +247,7 @@ export default function DashboardPage() {
           </p>
           <h1 className="text-2xl font-bold text-white sm:text-3xl">Dashboard</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {posts.length} post{posts.length !== 1 ? 's' : ''} total · {featuredCount} featured
+            Welcome back, <span className="text-gray-300">{user.name.split(' ')[0]}</span> · {posts.length} post{posts.length !== 1 ? 's' : ''} · {featuredCount} featured
           </p>
         </div>
         <div className="flex items-center gap-3">

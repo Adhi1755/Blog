@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useState, FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '../context/AuthContext'
 
 type FormState = {
   email: string
@@ -22,16 +24,18 @@ function validate(values: FormState): FieldError {
 }
 
 export default function LoginPage() {
+  const router = useRouter()
+  const { login } = useAuth()
   const [values, setValues] = useState<FormState>({ email: '', password: '' })
   const [errors, setErrors] = useState<FieldError>({})
+  const [serverError, setServerError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target
     setValues((prev) => ({ ...prev, [name]: value }))
-    // Clear error on change
+    setServerError('')
     if (errors[name as keyof FieldError]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }))
     }
@@ -45,10 +49,13 @@ export default function LoginPage() {
       return
     }
     setLoading(true)
-    // Simulate network request
-    await new Promise((r) => setTimeout(r, 1200))
+    const result = await login(values.email, values.password)
     setLoading(false)
-    setSubmitted(true)
+    if (result.error) {
+      setServerError(result.error)
+      return
+    }
+    router.push('/dashboard')
   }
 
   return (
@@ -73,25 +80,16 @@ export default function LoginPage() {
             </span>
           </Link>
 
-          {submitted ? (
-            /* ── Success state ── */
-            <div className="flex flex-col items-center gap-4 py-6 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-500/30">
-                <svg className="h-7 w-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-white">Welcome back!</h2>
-              <p className="text-sm text-gray-400">You&apos;ve signed in successfully.</p>
-              <Link
-                href="/"
-                className="mt-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all duration-200 hover:from-violet-500 hover:to-indigo-500"
-              >
-                Go to Dashboard
-              </Link>
+          {/* Server/API error banner */}
+          {serverError && (
+            <div role="alert" className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+              {serverError}
             </div>
-          ) : (
-            <>
+          )}
+          <>
               {/* Header */}
               <div className="mb-8">
                 <h1 className="text-2xl font-bold text-white">Sign in</h1>
@@ -266,8 +264,7 @@ export default function LoginPage() {
                   )}
                 </button>
               </form>
-            </>
-          )}
+          </>
         </div>
 
         {/* Bottom note */}
