@@ -107,7 +107,15 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-16 bg-white">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md flex flex-col gap-6">
+        {/* Back Button */}
+        <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-black transition-colors self-start">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          Back to Home
+        </Link>
+
         {/* Card */}
         <div className="border border-neutral-200 bg-white p-8 sm:p-10">
 
