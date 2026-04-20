@@ -57,7 +57,7 @@ function EditorContent() {
   const [title, setTitle]           = useState('')
   const [excerpt, setExcerpt]       = useState('')
   const [content, setContent]       = useState('')
-  const [category, setCategory]     = useState('Next.js')
+  const [category, setCategory]     = useState('')
   const [categoryColor, setCategoryColor] = useState('violet')
   const [thumbnail, setThumbnail]   = useState('')
   const [tagsInput, setTagsInput]   = useState('')
@@ -65,6 +65,8 @@ function EditorContent() {
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
   const [errors, setErrors]         = useState<Record<string, string>>({})
+  const [predicting, setPredicting] = useState(false)
+  const [predictError, setPredictError] = useState('')
   const titleRef   = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
 
@@ -101,6 +103,49 @@ function EditorContent() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [editSlug, hydrated, posts])
   useEffect(() => { titleRef.current?.focus() }, [])
+
+  async function predictCategory() {
+  if (!title.trim() && !excerpt.trim()) {
+    setPredictError('Add a title or summary first.')
+    return
+  }
+
+  setPredicting(true)
+  setPredictError('')
+
+  try {
+    const res = await fetch('https://blogengine-zovn.onrender.com/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: title.trim(),
+        description: excerpt.trim()
+      }),
+    })
+
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+
+    const data = await res.json()
+
+    console.log("API Response:", data) // 🔥 DEBUG
+
+    const predicted: string = data.prediction ?? ''
+
+    if (!predicted) throw new Error('No category returned')
+
+    const match = CATEGORY_OPTIONS.find(
+      c => c.label.toLowerCase() === predicted.toLowerCase()
+    )
+
+    setCategory(predicted)
+    setCategoryColor(match?.color ?? 'violet')
+
+  } catch (err) {
+    setPredictError(err instanceof Error ? err.message : 'Prediction failed')
+  } finally {
+    setPredicting(false)
+  }
+}
 
   function validate(): boolean {
     const e: Record<string, string> = {}
@@ -300,16 +345,77 @@ function EditorContent() {
                 </div>
               </SideCard>
 
-              {/* Category */}
+              {/* Category — AI predicted */}
               <SideCard title="Category">
-                <select
-                  id="editor-category" value={category}
-                  onChange={e => { const f = CATEGORY_OPTIONS.find(c => c.label === e.target.value); setCategory(e.target.value); setCategoryColor(f?.color ?? 'violet') }}
-                  style={{ ...inputStyle(), appearance: 'none', paddingRight: 32, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' viewBox='0 0 24 24' stroke='%236B6B6B' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = C.dark)}
-                  onBlur={e => (e.currentTarget.style.borderColor = C.border)}>
-                  {CATEGORY_OPTIONS.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
-                </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
+                    Click below to auto-detect the category from your title &amp; summary using AI.
+                  </p>
+
+                  {/* Predicted badge */}
+                  {category ? (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: C.accentD, border: `1.5px solid ${C.accent}33`,
+                      borderRadius: 8, padding: '10px 14px',
+                    }}>
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke={C.accent} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.accent, letterSpacing: '0.01em' }}>
+                        {category}
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{
+                      background: C.bg, border: `1.5px dashed ${C.border}`,
+                      borderRadius: 8, padding: '10px 14px',
+                      fontSize: 12, color: C.muted, textAlign: 'center',
+                    }}>
+                      Not predicted yet
+                    </div>
+                  )}
+
+                  {/* Predict button */}
+                  <button
+                    id="predict-category-btn"
+                    type="button"
+                    onClick={predictCategory}
+                    disabled={predicting}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      width: '100%', border: 'none', borderRadius: 8,
+                      padding: '9px 14px', fontSize: 11, fontWeight: 700,
+                      color: '#fff', background: predicting ? '#888' : C.dark,
+                      cursor: predicting ? 'not-allowed' : 'pointer',
+                      transition: 'background .18s, transform .15s',
+                      fontFamily: 'inherit', opacity: predicting ? 0.7 : 1,
+                    }}
+                    onMouseEnter={e => { if (!predicting) { e.currentTarget.style.background = C.accent; e.currentTarget.style.transform = 'translateY(-1px)' } }}
+                    onMouseLeave={e => { if (!predicting) { e.currentTarget.style.background = C.dark; e.currentTarget.style.transform = 'none' } }}
+                  >
+                    {predicting ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"
+                          style={{ animation: 'spin 1s linear infinite' }}>
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                        </svg>
+                        Predicting…
+                      </>
+                    ) : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        {category ? 'Re-predict Category' : 'Predict Category'}
+                      </>
+                    )}
+                  </button>
+
+                  {predictError && (
+                    <p style={{ fontSize: 11, color: C.error, fontWeight: 500 }}>{predictError}</p>
+                  )}
+                </div>
               </SideCard>
 
               {/* Thumbnail */}
@@ -376,6 +482,10 @@ function EditorContent() {
       <style jsx global>{`
         @media (max-width: 768px) {
           .editor-layout { grid-template-columns: 1fr !important; }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
         }
       `}</style>
     </div>
