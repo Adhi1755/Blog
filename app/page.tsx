@@ -1,744 +1,504 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useGSAP } from '@gsap/react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useAuth } from './context/AuthContext'
 
-/* ─────────────────────────────────────────────────────────────────────────
-   ICONS
-───────────────────────────────────────────────────────────────────────── */
-function ArrowRight({ size = 16 }: { size?: number }) {
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger, useGSAP)
+}
+
+/* ─── Tokens ───────────────────────────────────────────────── */
+const C = {
+  bg:        '#F7F7F7',
+  bg2:       '#FFFFFF',
+  bg3:       '#F0F0EE',
+  surface:   '#FFFFFF',
+  text:      '#111111',
+  muted:     '#6B6B6B',
+  accent:    '#FF6A00',
+  accentDim: 'rgba(255,106,0,0.10)',
+  accentGlow:'rgba(255,106,0,0.06)',
+  border:    '#DCDCDC',
+  borderDark:'#111111',
+  white:     '#FFFFFF',
+}
+
+/* ─── Data ────────────────────────────────────────────────── */
+const MOCK_HEADLINE = 'The quiet revolution of Swiss grid systems in digital design'
+
+const STORIES = [
+  { cat: 'Design',     title: 'The quiet revolution of Swiss grid systems in digital interfaces', excerpt: 'How a 70-year-old typographic tradition quietly became the backbone of every modern UI.' },
+  { cat: 'AI',         title: "Prompting as a craft: what good writers know that engineers don't", excerpt: 'Writing effective prompts has more in common with editorial journalism than software engineering.' },
+  { cat: 'Technology', title: 'Building for the long term: architecture decisions that age well',  excerpt: 'The engineering choices that compound in value — and the ones that become liabilities.' },
+]
+
+const AI_FEATURES = [
+  { num: '01', label: 'ML Classification',     title: 'Auto-categorize every post',     body: 'A model trained on thousands of articles automatically classifies each post — no manual tagging needed.' },
+  { num: '02', label: 'AI Summarization',       title: 'TL;DR powered by AI',            body: 'Every article gets an AI-generated summary so readers decide in seconds whether to dive in.' },
+  { num: '03', label: 'Smart Recommendations', title: 'A feed that learns from you',     body: "The recommendation engine surfaces articles you'll actually want to read — not just the most-viewed." },
+  { num: '04', label: 'Rich Markdown Editor',   title: 'Write in Markdown, beautifully', body: 'Distraction-free editor with live preview, syntax highlighting, image embeds, and draft auto-save.' },
+]
+
+const PILLARS = [
+  { n: '01', title: 'Write anything',   body: "Rich Markdown editor, image uploads, drafts — everything a serious writer needs, nothing they don't." },
+  { n: '02', title: 'Read the feed',    body: 'A curated reading experience. Browse posts, expand inline, and discover writing that earns your attention.' },
+  { n: '03', title: 'Own your content', body: 'Edit, update, or delete your posts at any time. Your words are yours — always.' },
+]
+
+const STATS = [
+  { val: '12k+', label: 'Writers' },
+  { val: '48k+', label: 'Articles' },
+  { val: '200k', label: 'Monthly readers' },
+  { val: '4.9★', label: 'Avg rating' },
+]
+
+const TICKER = ['Design', 'Engineering', 'Philosophy', 'Culture', 'Science', 'Fiction', 'Technology', 'AI', 'Business', 'Writing', 'Architecture', 'Psychology']
+
+/* ─── Sub-components ──────────────────────────────────────── */
+function Arrow({ sz = 13 }: { sz?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12h14M12 5l7 7-7 7" />
     </svg>
   )
 }
 
-function LockIcon() {
+function Logo() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  )
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
-   LOGO — shared across nav and footer
-───────────────────────────────────────────────────────────────────────── */
-function BlogramLogo({ size = 20 }: { size?: number }) {
-  return (
-    <Link
-      href="/"
-      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline', gap: '0px' }}
-    >
-      <span style={{
-        fontSize: `${size}px`,
-        fontWeight: 800,
-        letterSpacing: '-0.03em',
-        color: 'var(--accent)',       /* BLOG in orange */
-        lineHeight: 1,
-      }}>
-        BLOG
-      </span>
-      <span style={{
-        fontSize: `${size}px`,
-        fontWeight: 900,
-        letterSpacing: '-0.05em',
-        color: 'var(--text-primary)', /* RAM in black */
-        lineHeight: 1,
-      }}>
-        RAM
-      </span>
+    <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline' }}>
+      <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.04em', color: C.accent }}>BLOG</span>
+      <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.05em', color: C.text }}>RAM</span>
     </Link>
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   AI FEATURES DATA
-───────────────────────────────────────────────────────────────────────── */
-const AI_FEATURES = [
-  {
-    id: 'classify',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/>
-        <path d="M17.5 14h.01M14 17.5h.01M21 17.5h.01M17.5 21h.01M14 14l3.5 3.5M21 14l-3.5 3.5M14 21l3.5-3.5M21 21l-3.5-3.5"/>
-      </svg>
-    ),
-    label: 'ML Classification',
-    title: 'Auto-categorize every post',
-    body: 'A machine learning model trained on thousands of articles automatically classifies each post into the right category — no manual tagging needed.',
-  },
-  {
-    id: 'summarize',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-      </svg>
-    ),
-    label: 'AI Summarization',
-    title: 'TL;DR powered by AI',
-    body: 'Every article gets an AI-generated summary so readers can decide in seconds whether to dive in — and writers reach people who are short on time.',
-  },
-  {
-    id: 'recommend',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-      </svg>
-    ),
-    label: 'Smart Recommendations',
-    title: 'A feed that learns from you',
-    body: "The recommendation engine analyses your reading behaviour to surface articles you'll actually want to read — not just the most-viewed ones.",
-  },
-  {
-    id: 'editor',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </svg>
-    ),
-    label: 'Rich Markdown Editor',
-    title: 'Write in Markdown, beautifully',
-    body: "A distraction-free editor with live preview, syntax highlighting, image embeds, and draft auto-save — everything a serious writer actually needs.",
-  },
-]
-
-/* ─────────────────────────────────────────────────────────────────────────
-   PLATFORM PILLARS DATA
-───────────────────────────────────────────────────────────────────────── */
-const PILLARS = [
-  {
-    icon: '✦',
-    title: 'Write anything',
-    body: "Rich Markdown editor, image uploads, drafts — everything a serious writer needs, nothing they don't.",
-  },
-  {
-    icon: '◈',
-    title: 'Read the feed',
-    body: 'A curated reading experience. Browse posts, expand inline, and discover writing that earns your attention.',
-  },
-  {
-    icon: '◎',
-    title: 'Own your content',
-    body: 'Edit, update, or delete your posts at any time. Your words are yours — always.',
-  },
-]
-
-/* ─────────────────────────────────────────────────────────────────────────
-   GATED STORY PREVIEWS
-───────────────────────────────────────────────────────────────────────── */
-const STORY_PREVIEWS = [
-  {
-    category: 'Design',
-    title: 'The quiet revolution of Swiss grid systems in digital interfaces',
-    excerpt: 'How a 70-year-old typographic tradition quietly became the backbone of every modern UI.',
-  },
-  {
-    category: 'AI',
-    title: "Prompting as a craft: what good writers know that engineers don't",
-    excerpt: 'Writing effective prompts has more in common with editorial journalism than software engineering.',
-  },
-  {
-    category: 'Technology',
-    title: 'Building for the long term: architecture decisions that age well',
-    excerpt: 'The engineering choices that compound in value — and the ones that become liabilities the moment you ship.',
-  },
-]
-
-/* ─────────────────────────────────────────────────────────────────────────
-   MAIN PAGE
-───────────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   PAGE
+═══════════════════════════════════════════════════════════ */
 export default function LandingPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+
+  const pageRef    = useRef<HTMLDivElement>(null)
+  const navRef     = useRef<HTMLElement>(null)
+  const heroRef    = useRef<HTMLDivElement>(null)
+  const typedRef   = useRef<HTMLSpanElement>(null)
+  const storiesRef = useRef<HTMLDivElement>(null)
+  const featRef    = useRef<HTMLDivElement>(null)
+  const pillarsRef = useRef<HTMLDivElement>(null)
+  const ctaRef     = useRef<HTMLElement>(null)
+  const ctaHeadRef = useRef<HTMLHeadingElement>(null)
+  const tickerRef  = useRef<HTMLDivElement>(null)
+  const statsRef   = useRef<HTMLDivElement>(null)
+
+  const noMotion = useCallback(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
 
   useEffect(() => {
     if (!loading && user) router.replace('/dashboard')
   }, [loading, user, router])
 
+  /* Typewriter */
+  useEffect(() => {
+    if (noMotion() || !typedRef.current) return
+    let i = 0; const el = typedRef.current; el.textContent = ''
+    const id = setInterval(() => { el.textContent = MOCK_HEADLINE.slice(0, i); i++; if (i > MOCK_HEADLINE.length) clearInterval(id) }, 36)
+    return () => clearInterval(id)
+  }, [noMotion])
+
+  useGSAP(() => {
+    if (noMotion()) return
+    const ctx = gsap.context(() => {
+
+      /* NAV */
+      ScrollTrigger.create({
+        start: 60,
+        onEnter:     () => gsap.to(navRef.current, { backgroundColor: 'rgba(247,247,247,0.97)', boxShadow: `0 1px 0 ${C.border}`, duration: 0.3 }),
+        onLeaveBack: () => gsap.to(navRef.current, { backgroundColor: 'transparent', boxShadow: 'none', duration: 0.3 }),
+      })
+
+      /* HERO */
+      if (heroRef.current) {
+        gsap.from(heroRef.current.querySelectorAll('.gsap-h'), { y: 28, opacity: 0, duration: 0.75, ease: 'power3.out', stagger: 0.08 })
+        const card = heroRef.current.querySelector('.gsap-hcard')
+        if (card) gsap.from(card, { scale: 0.94, opacity: 0, duration: 0.9, ease: 'power3.out', delay: 0.2 })
+        gsap.from(heroRef.current.querySelectorAll('.gsap-chip'), { y: -12, opacity: 0, duration: 0.6, stagger: 0.14, delay: 0.65, ease: 'back.out(1.5)' })
+      }
+
+      /* STATS */
+      if (statsRef.current) {
+        gsap.from(statsRef.current.querySelectorAll('.gsap-stat'), {
+          y: 22, opacity: 0, duration: 0.5, stagger: 0.08,
+          scrollTrigger: { trigger: statsRef.current, start: 'top 88%' },
+        })
+      }
+
+      /* STORIES */
+      if (storiesRef.current) {
+        gsap.from(storiesRef.current.querySelectorAll('.gsap-sc'), {
+          y: 32, opacity: 0, duration: 0.55, stagger: 0.11, ease: 'power2.out',
+          scrollTrigger: { trigger: storiesRef.current, start: 'top 84%' },
+        })
+      }
+
+      /* FEATURES */
+      if (featRef.current) {
+        gsap.from(featRef.current.querySelectorAll('.gsap-fc'), {
+          y: 28, opacity: 0, duration: 0.5, stagger: 0.09, ease: 'power2.out',
+          scrollTrigger: { trigger: featRef.current, start: 'top 84%' },
+        })
+      }
+
+      /* PILLARS */
+      if (pillarsRef.current) {
+        gsap.from(pillarsRef.current.querySelectorAll('.gsap-pc'), {
+          y: 26, opacity: 0, duration: 0.48, stagger: 0.09,
+          scrollTrigger: { trigger: pillarsRef.current, start: 'top 86%' },
+        })
+      }
+
+      /* CTA headline split */
+      if (ctaHeadRef.current) {
+        const words = (ctaHeadRef.current.textContent || '').split(' ')
+        ctaHeadRef.current.innerHTML = words
+          .map(w => `<span style="display:inline-block;overflow:hidden;vertical-align:bottom"><span class="gsap-w" style="display:inline-block">${w}</span></span>`)
+          .join(' ')
+        gsap.from(ctaHeadRef.current.querySelectorAll('.gsap-w'), {
+          y: '105%', duration: 0.7, stagger: 0.07, ease: 'power3.out',
+          scrollTrigger: { trigger: ctaRef.current, start: 'top 82%' },
+        })
+      }
+
+      /* TICKER */
+      if (tickerRef.current) {
+        gsap.to(tickerRef.current, { xPercent: -50, duration: 26, ease: 'none', repeat: -1 })
+      }
+
+    }, pageRef)
+    return () => ctx.revert()
+  }, { scope: pageRef })
+
+  const onPillarEnter = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (noMotion()) return
+    gsap.to((e.currentTarget as HTMLElement).querySelector('.gsap-pb'), { scaleX: 1, duration: 0.32, ease: 'power2.out' })
+    gsap.to(e.currentTarget, { y: -4, duration: 0.22, ease: 'power2.out' })
+  }, [noMotion])
+  const onPillarLeave = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (noMotion()) return
+    gsap.to((e.currentTarget as HTMLElement).querySelector('.gsap-pb'), { scaleX: 0, duration: 0.26, ease: 'power2.in' })
+    gsap.to(e.currentTarget, { y: 0, duration: 0.22 })
+  }, [noMotion])
+
+  const onCardEnter = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (noMotion()) return
+    gsap.to(e.currentTarget, { y: -4, duration: 0.22, ease: 'power2.out' })
+  }, [noMotion])
+  const onCardLeave = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (noMotion()) return
+    gsap.to(e.currentTarget, { y: 0, duration: 0.22 })
+  }, [noMotion])
+
   if (loading || user) return null
 
+  const tickerStr = [...TICKER, ...TICKER].join('  ·  ')
+
+  const btnPrimary: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+    padding: '10px 22px', borderRadius: 7,
+    background: C.text, color: C.white,
+    border: `1.5px solid ${C.text}`,
+    fontSize: 13, fontWeight: 700, textDecoration: 'none',
+    transition: 'background .18s, transform .15s',
+    cursor: 'pointer',
+  }
+  const btnOutline: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+    padding: '10px 22px', borderRadius: 7,
+    background: 'transparent', color: C.text,
+    border: `1.5px solid ${C.borderDark}`,
+    fontSize: 13, fontWeight: 600, textDecoration: 'none',
+    transition: 'background .18s, color .18s, transform .15s',
+    cursor: 'pointer',
+  }
+
   return (
-    <div style={{ background: 'var(--bg-page)', minHeight: '100vh', color: 'var(--text-primary)' }}>
+    <div ref={pageRef} style={{ background: C.bg, minHeight: '100vh', color: C.text, fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif", overflowX: 'hidden' }}>
 
-      {/* ─────────────────────── NAV ─────────────────────── */}
-      {/* No bottom border, minimal, right-aligned nav */}
-      <header style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        background: 'rgba(247,247,247,0.94)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        /* No border-bottom — clean look */
+      {/* ── NAV ── */}
+      <header ref={navRef} style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+        borderBottom: `1px solid ${C.border}`,
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        willChange: 'background-color',
       }}>
-        <div className="container-max" style={{
-          height: '64px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '32px',
-        }}>
-          {/* Logo */}
-          <BlogramLogo size={19} />
-
-          {/* Right side: Home + Sign In only */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
-            <Link
-              href="/"
-              className="nav-link"
-              style={{ fontFamily: 'var(--font-sans)' }}
-            >
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(20px,4vw,60px)', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Logo />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Link href="/"
+              style={{ fontSize: 13, fontWeight: 500, color: C.muted, textDecoration: 'none', padding: '6px 12px', borderRadius: 6, transition: 'color .2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = C.text)}
+              onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
               Home
             </Link>
-
-            <Link
-              id="landing-signin"
-              href="/login"
-              className="btn btn-solid"
-              style={{ padding: '9px 22px', fontSize: '13px', borderRadius: '8px' }}
-            >
+            <Link href="/login"
+              style={btnPrimary}
+              onMouseEnter={e => { e.currentTarget.style.background = '#2a2a2a'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.text; e.currentTarget.style.transform = 'none' }}>
               Sign In
             </Link>
           </div>
         </div>
-
-        {/* Thin separator line — very subtle, not heavy */}
-        <div style={{ height: '1px', background: 'var(--border)', opacity: 0.6 }} />
       </header>
 
       <main>
 
-        {/* ─────────────────────── HERO ─────────────────────── */}
-        <section style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="container-max" style={{
-            paddingTop: 'clamp(88px, 12vw, 144px)',
-            paddingBottom: 'clamp(88px, 12vw, 144px)',
-          }}>
-            <div style={{ maxWidth: '840px' }}>
+        {/* ══ § 1 — HERO ══ */}
+        <section style={{ paddingTop: 'clamp(108px,13vw,156px)', paddingBottom: 'clamp(64px,8vw,110px)', borderBottom: `1px solid ${C.border}`, position: 'relative' }}>
+          {/* Grid lines */}
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${C.border} 1px, transparent 1px), linear-gradient(90deg, ${C.border} 1px, transparent 1px)`, backgroundSize: '72px 72px', opacity: 0.5, pointerEvents: 'none' }} />
 
-              {/* Kicker */}
-              <p className="label-xs animate-fade-up" style={{ marginBottom: '28px' }}>
-                A Platform for Serious Writing
-              </p>
+          <div ref={heroRef} className="hero-two-col" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(20px,4vw,60px)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(40px,5vw,88px)', alignItems: 'center', position: 'relative' }}>
 
-              {/* Hero headline */}
-              <h1
-                className="animate-fade-up delay-1"
-                style={{
-                  fontSize: 'clamp(48px, 7.5vw, 90px)',
-                  fontWeight: 900,
-                  lineHeight: 1.0,
-                  letterSpacing: '-0.04em',
-                  color: 'var(--text-primary)',
-                  marginBottom: '28px',
-                }}
-              >
-                Thoughts, stories,
-                <br />
-                <span style={{ color: 'var(--text-secondary)' }}>and ideas for</span>
-                <br />curious minds.
+            {/* Left */}
+            <div>
+              <div className="gsap-h" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 12px 4px 5px', borderRadius: 100, border: `1px solid ${C.border}`, background: C.bg2, marginBottom: 28 }}>
+                <span style={{ background: C.accent, borderRadius: 100, padding: '2px 9px', fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.white }}>New</span>
+                <span style={{ fontSize: 12, color: C.accent, fontWeight: 600 }}>AI-powered writing platform</span>
+              </div>
+
+              <h1 className="gsap-h" style={{ fontSize: 'clamp(36px,5vw,60px)', fontWeight: 800, lineHeight: 1.08, letterSpacing: '-0.035em', color: C.text, marginBottom: 20 }}>
+                Thoughts,{' '}
+                <span style={{ color: C.muted }}>stories &amp; ideas</span>{' '}
+                for curious minds.
               </h1>
 
-              {/* Sub-copy */}
-              <p
-                className="animate-fade-up delay-2"
-                style={{
-                  fontSize: '18px',
-                  lineHeight: 1.78,
-                  color: 'var(--text-secondary)',
-                  maxWidth: '520px',
-                  marginBottom: '48px',
-                }}
-              >
-                Blogram is a writing platform powered by AI. Publish in-depth articles,
-                discover curated reads, and let intelligent tools work quietly in the background.
+              <p className="gsap-h" style={{ fontSize: 15, lineHeight: 1.78, color: C.muted, maxWidth: 440, marginBottom: 34 }}>
+                Blogram is a writing platform powered by AI. Publish in-depth articles, discover curated reads, and let intelligent tools work quietly in the background.
               </p>
 
-              {/* CTAs */}
-              <div
-                className="animate-fade-up delay-3"
-                style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}
-              >
-                <Link id="landing-get-started" href="/register" className="btn btn-solid">
-                  Start Writing Free <ArrowRight />
+              <div className="gsap-h" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <Link href="/register"
+                  style={btnPrimary}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#2a2a2a'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = C.text; e.currentTarget.style.transform = 'none' }}>
+                  Start Writing Free <Arrow />
                 </Link>
-                <Link id="landing-signin-hero" href="/login" className="btn btn-outline">
+                <Link href="/login"
+                  style={btnOutline}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.text; (e.currentTarget as HTMLAnchorElement).style.color = C.white; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; (e.currentTarget as HTMLAnchorElement).style.color = C.text; e.currentTarget.style.transform = 'none' }}>
                   Sign In
                 </Link>
               </div>
             </div>
+
+            {/* Right — Hero card */}
+            <div style={{ position: 'relative' }}>
+              <div className="gsap-hcard" style={{
+                background: C.white, border: `1px solid ${C.border}`, borderRadius: 16,
+                padding: 'clamp(22px,3vw,36px)',
+                boxShadow: '0 6px 40px -6px rgba(0,0,0,0.10)',
+                willChange: 'transform, opacity', position: 'relative', overflow: 'hidden',
+              }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${C.accent}, transparent)` }} />
+                <div style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
+                  {['#ff5f57', '#febc2e', '#28c840'].map(c => <span key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c, display: 'inline-block' }} />)}
+                </div>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.accent, marginBottom: 12 }}>Design</p>
+                <h2 style={{ fontSize: 'clamp(13px,1.4vw,16px)', fontWeight: 700, lineHeight: 1.5, color: C.text, marginBottom: 18, minHeight: '3.6em' }}>
+                  <span ref={typedRef} />
+                  <span style={{ display: 'inline-block', width: 2, height: '1em', background: C.accent, marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .85s step-end infinite' }} />
+                </h2>
+                {[100, 86, 74, 92, 58].map((w, i) => (
+                  <div key={i} style={{ height: 6, borderRadius: 3, marginBottom: 7, background: i === 4 ? '#f2f2f2' : '#e8e8e8', width: `${w}%` }} />
+                ))}
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: C.accentDim, border: `1px solid rgba(255,106,0,0.18)`, flexShrink: 0 }} />
+                  <div>
+                    <div style={{ height: 7, width: 76, borderRadius: 3, background: '#e8e8e8', marginBottom: 5 }} />
+                    <div style={{ height: 5, width: 50, borderRadius: 3, background: '#f0f0f0' }} />
+                  </div>
+                  <div style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 100, background: C.accentDim, border: `1px solid rgba(255,106,0,0.16)` }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.accent }}>4 min</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chips */}
+              <div className="gsap-chip" style={{ position: 'absolute', top: -14, right: -14, background: C.white, borderRadius: 10, padding: '8px 14px', border: `1px solid ${C.border}`, boxShadow: '0 4px 18px rgba(0,0,0,0.08)', fontSize: 12, fontWeight: 600, color: C.text, display: 'flex', alignItems: 'center', gap: 7, willChange: 'transform, opacity' }}>
+                <span style={{ color: C.accent }}>👁</span> 1.2k readers
+              </div>
+              <div className="gsap-chip" style={{ position: 'absolute', bottom: -14, left: -14, background: C.white, borderRadius: 10, padding: '8px 14px', border: `1px solid ${C.border}`, boxShadow: '0 4px 18px rgba(0,0,0,0.08)', fontSize: 12, fontWeight: 600, color: C.text, display: 'flex', alignItems: 'center', gap: 7, willChange: 'transform, opacity' }}>
+                <span style={{ color: C.accent }}>✦</span> Live now
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* ─────────────────────── STORIES (GATED) ─────────────────────── */}
-        {/*
-            Section shows a preview of story cards.
-            The entire clickable overlay redirects unauthenticated users to /login.
-            Cards are intentionally blurred/locked — nothing real is revealed.
-        */}
-        <section style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="container-max section-pad">
-
-            {/* Section header */}
-            <div style={{ marginBottom: '48px' }}>
-              <p className="label-xs" style={{ marginBottom: '12px' }}>Reading</p>
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-end',
-                justifyContent: 'space-between',
-                gap: '24px',
-                flexWrap: 'wrap',
-              }}>
-                <h2 style={{
-                  fontSize: 'clamp(26px, 3.5vw, 38px)',
-                  fontWeight: 800,
-                  letterSpacing: '-0.03em',
-                  lineHeight: 1.1,
-                }}>
-                  Stories worth your time
-                </h2>
-                <Link
-                  href="/login"
-                  className="btn btn-outline"
-                  style={{ padding: '9px 20px', flexShrink: 0 }}
-                >
-                  Sign in to read <ArrowRight size={14} />
-                </Link>
+        {/* ══ STATS BAND ══ */}
+        <div ref={statsRef} style={{ borderBottom: `1px solid ${C.border}`, background: C.white }}>
+          <div className="stats-grid" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(20px,4vw,60px)', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
+            {STATS.map((s, i) => (
+              <div key={s.label} className="gsap-stat" style={{ paddingTop: 'clamp(22px,3vw,36px)', paddingBottom: 'clamp(22px,3vw,36px)', borderRight: i < 3 ? `1px solid ${C.border}` : 'none', paddingLeft: i === 0 ? 0 : 'clamp(16px,2.5vw,36px)', paddingRight: i === 3 ? 0 : 'clamp(16px,2.5vw,36px)' }}>
+                <p style={{ fontSize: 'clamp(20px,2.6vw,30px)', fontWeight: 800, letterSpacing: '-0.04em', color: C.text, marginBottom: 4 }}>{s.val}</p>
+                <p style={{ fontSize: 11, fontWeight: 500, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.14em' }}>{s.label}</p>
               </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ══ § 2 — STORIES ══ */}
+        <section style={{ borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(52px,7vw,88px) clamp(20px,4vw,60px)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 10 }}>Reading</p>
+                <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, color: C.text }}>Stories worth your time</h2>
+              </div>
+              <Link href="/login"
+                style={btnOutline}
+                onMouseEnter={e => { e.currentTarget.style.background = C.text; (e.currentTarget as HTMLAnchorElement).style.color = C.white }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; (e.currentTarget as HTMLAnchorElement).style.color = C.text }}>
+                Sign in to read <Arrow />
+              </Link>
             </div>
 
-            {/* Gated preview cards */}
-            <div style={{ position: 'relative' }}>
-              {/* Cards — intentionally desaturated/blurred to signal gating */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
-                gap: '28px',
-              }}>
-                {STORY_PREVIEWS.map((story, i) => (
-                  <div
-                    key={story.title}
-                    style={{
-                      background: 'var(--bg-white)',
-                      borderRadius: '14px',
-                      padding: '28px',
-                      border: '1px solid var(--border)',
-                      opacity: i === 0 ? 0.92 : i === 1 ? 0.6 : 0.33,
-                      filter: i === 0 ? 'none' : i === 1 ? 'blur(1.5px)' : 'blur(3px)',
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    }}
-                  >
-                    <span style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      letterSpacing: '0.18em',
-                      textTransform: 'uppercase',
-                      color: 'var(--accent)',
-                      display: 'block',
-                      marginBottom: '14px',
-                    }}>
-                      {story.category}
-                    </span>
-                    <h3 style={{
-                      fontSize: '17px',
-                      fontWeight: 700,
-                      lineHeight: 1.3,
-                      letterSpacing: '-0.02em',
-                      color: 'var(--text-primary)',
-                      marginBottom: '12px',
-                    }}>
-                      {story.title}
-                    </h3>
-                    <p style={{
-                      fontSize: '14px',
-                      lineHeight: 1.7,
-                      color: 'var(--text-secondary)',
-                    }}>
-                      {story.excerpt}
-                    </p>
-                    {/* Fake metadata */}
-                    <div style={{
-                      marginTop: '24px',
-                      paddingTop: '16px',
-                      borderTop: '1px solid var(--border)',
-                      display: 'flex',
-                      gap: '8px',
-                      alignItems: 'center',
-                    }}>
-                      <div style={{
-                        width: '26px', height: '26px', borderRadius: '50%',
-                        background: 'var(--bg-muted)', flexShrink: 0,
-                      }} />
-                      <div style={{
-                        height: '10px', borderRadius: '4px',
-                        background: 'var(--bg-muted)', width: '100px',
-                      }} />
-                    </div>
+            <div ref={storiesRef} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,300px),1fr))', gap: 1, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', background: C.border }}>
+              {STORIES.map((s, i) => (
+                <div key={s.title} className="gsap-sc" onMouseEnter={onCardEnter} onMouseLeave={onCardLeave}
+                  style={{ background: C.white, padding: 'clamp(20px,2.5vw,30px)', position: 'relative', overflow: 'hidden', opacity: i === 0 ? 1 : i === 1 ? 0.5 : 0.25, filter: i > 0 ? `blur(${i * 1.5}px)` : 'none', willChange: 'transform', cursor: i === 0 ? 'default' : 'not-allowed' }}>
+                  {i === 0 && <div style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '100%', background: C.accent }} />}
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, display: 'block', marginBottom: 11 }}>{s.cat}</span>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.38, letterSpacing: '-0.02em', color: C.text, marginBottom: 9 }}>{s.title}</h3>
+                  <p style={{ fontSize: 13, lineHeight: 1.72, color: C.muted }}>{s.excerpt}</p>
+                  <div style={{ marginTop: 20, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#eee', flexShrink: 0 }} />
+                    <div style={{ height: 7, width: 72, borderRadius: 3, background: '#eee' }} />
+                    <div style={{ marginLeft: 'auto', height: 6, width: 32, borderRadius: 3, background: '#f0f0f0' }} />
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
 
-              {/* Full-overlay CTA — transparent clickable layer on top */}
-              <Link
-                href="/login"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '16px',
-                  textDecoration: 'none',
-                  borderRadius: '14px',
-                  /* subtle frosted-glass center badge only */
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '12px',
-                  background: 'rgba(247,247,247,0.9)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '16px',
-                  padding: '28px 40px',
-                  textAlign: 'center',
-                  boxShadow: '0 8px 40px -8px rgba(0,0,0,0.12)',
-                }}>
-                  <span style={{ color: 'var(--text-secondary)', display: 'flex' }}>
-                    <LockIcon />
-                  </span>
-                  <p style={{
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    color: 'var(--text-primary)',
-                    letterSpacing: '-0.02em',
-                  }}>
-                    Sign in to read
-                  </p>
-                  <p style={{
-                    fontSize: '13px',
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.6,
-                    maxWidth: '220px',
-                  }}>
-                    Create a free account or sign in to unlock every article on Blogram.
-                  </p>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    marginTop: '4px',
-                    padding: '10px 22px',
-                    background: 'var(--text-primary)',
-                    color: '#fff',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    letterSpacing: '0.02em',
-                  }}>
-                    Sign In <ArrowRight size={13} />
-                  </span>
+            {/* Lock overlay */}
+            <div style={{ marginTop: -180, display: 'flex', justifyContent: 'center', paddingBottom: 32, position: 'relative', zIndex: 2, pointerEvents: 'none' }}>
+              <Link href="/login" style={{ pointerEvents: 'all', textDecoration: 'none' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, background: 'rgba(247,247,247,0.92)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', border: `1px solid ${C.border}`, borderRadius: 14, padding: '26px 40px', boxShadow: '0 6px 32px rgba(0,0,0,0.08)' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: C.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  </div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>Sign in to read all stories</p>
+                  <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.6, maxWidth: 200, textAlign: 'center' }}>Create a free account to unlock every article.</p>
+                  <span style={{ ...btnPrimary, marginTop: 4 }}>Sign In <Arrow /></span>
                 </div>
               </Link>
             </div>
           </div>
         </section>
 
-        {/* ─────────────────────── AI FEATURES ─────────────────────── */}
-        <section style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-white)' }}>
-          <div className="container-max section-pad">
-
-            {/* Section header */}
-            <div style={{ maxWidth: '600px', marginBottom: 'clamp(48px, 6vw, 80px)' }}>
-              <p className="label-xs" style={{ marginBottom: '12px' }}>Intelligence</p>
-              <h2 style={{
-                fontSize: 'clamp(28px, 3.5vw, 40px)',
-                fontWeight: 800,
-                letterSpacing: '-0.04em',
-                lineHeight: 1.08,
-                marginBottom: '16px',
-              }}>
-                AI working quietly in the background
+        {/* ══ § 3 — AI FEATURES ══ */}
+        <section style={{ borderBottom: `1px solid ${C.border}`, background: C.white }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(52px,7vw,88px) clamp(20px,4vw,60px)' }}>
+            <div style={{ maxWidth: 500, marginBottom: 'clamp(36px,5vw,56px)' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 11 }}>Intelligence</p>
+              <h2 style={{ fontSize: 'clamp(22px,3vw,34px)', fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.12, color: C.text, marginBottom: 13 }}>
+                AI working quietly<br />in the background
               </h2>
-              <p style={{
-                fontSize: '16px',
-                lineHeight: 1.75,
-                color: 'var(--text-secondary)',
-              }}>
-                Blogram integrates machine learning at every layer — from the moment you publish
-                to the moment a reader discovers your work.
+              <p style={{ fontSize: 14, lineHeight: 1.78, color: C.muted }}>
+                Blogram integrates machine learning at every layer — from the moment you publish to the moment a reader discovers your work.
               </p>
             </div>
 
-            {/* Feature rows — alternating text + visual panel */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {AI_FEATURES.map((feat, idx) => (
-                <div
-                  key={feat.id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '0',
-                    background: 'var(--bg-page)',
-                    borderRadius: idx === 0 ? '14px 14px 0 0' : idx === AI_FEATURES.length - 1 ? '0 0 14px 14px' : '0',
-                    overflow: 'hidden',
-                  }}
-                  className="ai-feat-row"
-                >
-                  {/* Text side */}
-                  <div style={{
-                    padding: 'clamp(32px, 4vw, 52px)',
-                    borderRight: '1px solid var(--border)',
-                    order: idx % 2 === 0 ? 1 : 2,
-                  }}>
-                    <div style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '10px',
-                      background: 'rgba(255,106,0,0.08)',
-                      color: 'var(--accent)',
-                      marginBottom: '20px',
-                    }}>
-                      {feat.icon}
+            <div ref={featRef} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,270px),1fr))', gap: 1, background: C.border, borderRadius: 14, overflow: 'hidden' }}>
+              {AI_FEATURES.map(f => (
+                <div key={f.num} className="gsap-fc"
+                  onMouseEnter={e => { gsap.to(e.currentTarget, { background: C.bg3, duration: 0.22 }); gsap.to(e.currentTarget, { y: -3, duration: 0.2 }) }}
+                  onMouseLeave={e => { gsap.to(e.currentTarget, { background: C.white, duration: 0.22 }); gsap.to(e.currentTarget, { y: 0, duration: 0.2 }) }}
+                  style={{ background: C.white, padding: 'clamp(20px,2.5vw,30px)', position: 'relative', willChange: 'transform', cursor: 'default' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accentDim, border: `1px solid rgba(255,106,0,0.14)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 15, color: C.accent }}>✦</span>
                     </div>
-                    <p style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      letterSpacing: '0.18em',
-                      textTransform: 'uppercase',
-                      color: 'var(--accent)',
-                      marginBottom: '10px',
-                    }}>
-                      {feat.label}
-                    </p>
-                    <h3 style={{
-                      fontSize: 'clamp(18px, 2vw, 22px)',
-                      fontWeight: 800,
-                      letterSpacing: '-0.03em',
-                      lineHeight: 1.2,
-                      color: 'var(--text-primary)',
-                      marginBottom: '12px',
-                    }}>
-                      {feat.title}
-                    </h3>
-                    <p style={{
-                      fontSize: '15px',
-                      lineHeight: 1.75,
-                      color: 'var(--text-secondary)',
-                    }}>
-                      {feat.body}
-                    </p>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: '#e8e8e8', letterSpacing: '-0.04em', lineHeight: 1 }}>{f.num}</span>
                   </div>
-
-                  {/* Decorative accent panel */}
-                  <div style={{
-                    padding: 'clamp(32px, 4vw, 52px)',
-                    background: 'var(--bg-white)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    order: idx % 2 === 0 ? 2 : 1,
-                    minHeight: '180px',
-                  }}>
-                    {/* Abstract visual — index-number watermark */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      border: '1.5px solid var(--border)',
-                      position: 'relative',
-                    }}>
-                      <span style={{
-                        fontSize: '28px',
-                        fontWeight: 900,
-                        letterSpacing: '-0.05em',
-                        color: 'var(--text-faint)',
-                        lineHeight: 1,
-                      }}>
-                        0{idx + 1}
-                      </span>
-                    </div>
-                  </div>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.accent, marginBottom: 6 }}>{f.label}</p>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.3, color: C.text, marginBottom: 8 }}>{f.title}</h3>
+                  <p style={{ fontSize: 13, lineHeight: 1.75, color: C.muted }}>{f.body}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ─────────────────────── BUILT FOR SERIOUS WRITING ─────────────────────── */}
-        <section style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="container-max section-pad">
-
-            {/* Section header */}
-            <div style={{ marginBottom: 'clamp(40px, 5vw, 64px)' }}>
-              <p className="label-xs" style={{ marginBottom: '12px' }}>The Platform</p>
-              <h2 style={{
-                fontSize: 'clamp(28px, 3.5vw, 38px)',
-                fontWeight: 800,
-                letterSpacing: '-0.03em',
-                lineHeight: 1.1,
-              }}>
-                Built for serious writing
-              </h2>
+        {/* ══ § 4 — PILLARS ══ */}
+        <section style={{ borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(52px,7vw,88px) clamp(20px,4vw,60px)' }}>
+            <div style={{ marginBottom: 'clamp(32px,4vw,52px)' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 11 }}>The Platform</p>
+              <h2 style={{ fontSize: 'clamp(22px,3vw,34px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, color: C.text }}>Built for serious writing</h2>
             </div>
 
-            {/* Pillars — separated by 1px borders */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
-              gap: '1px',
-              background: 'var(--border)',
-              borderRadius: '14px',
-              overflow: 'hidden',
-            }}>
-              {PILLARS.map(({ icon, title, body }) => (
-                <div
-                  key={title}
-                  style={{
-                    background: 'var(--bg-white)',
-                    padding: 'clamp(28px, 4vw, 52px)',
-                  }}
-                >
-                  <span style={{
-                    fontSize: '22px',
-                    color: 'var(--accent)',
-                    display: 'block',
-                    marginBottom: '18px',
-                  }}>
-                    {icon}
-                  </span>
-                  <h3 style={{
-                    fontSize: '17px',
-                    fontWeight: 700,
-                    letterSpacing: '-0.02em',
-                    marginBottom: '10px',
-                  }}>
-                    {title}
-                  </h3>
-                  <p style={{ fontSize: '14px', lineHeight: 1.78, color: 'var(--text-secondary)' }}>
-                    {body}
-                  </p>
+            <div ref={pillarsRef} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,250px),1fr))', gap: 1, background: C.border, borderRadius: 14, overflow: 'hidden' }}>
+              {PILLARS.map(({ n, title, body }) => (
+                <div key={n} className="gsap-pc" onMouseEnter={onPillarEnter} onMouseLeave={onPillarLeave}
+                  style={{ background: C.white, padding: 'clamp(24px,3.5vw,44px)', position: 'relative', willChange: 'transform', cursor: 'default', overflow: 'hidden' }}>
+                  <div className="gsap-pb" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: C.accent, transform: 'scaleX(0)', transformOrigin: 'left' }} />
+                  <span style={{ fontSize: 'clamp(26px,3vw,38px)', fontWeight: 800, letterSpacing: '-0.04em', color: '#eaeaea', display: 'block', marginBottom: 16, lineHeight: 1 }}>{n}</span>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 9, color: C.text }}>{title}</h3>
+                  <p style={{ fontSize: 13, lineHeight: 1.78, color: C.muted }}>{body}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ─────────────────────── FINAL CTA ─────────────────────── */}
-        <section style={{ background: 'var(--text-primary)' }}>
-          <div className="container-max section-pad" style={{ textAlign: 'center' }}>
-            <p style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-              color: 'var(--accent)',
-              marginBottom: '24px',
-            }}>
-              Ready to write?
-            </p>
-            <h2 style={{
-              fontSize: 'clamp(32px, 5vw, 56px)',
-              fontWeight: 900,
-              letterSpacing: '-0.04em',
-              lineHeight: 1.05,
-              color: '#fff',
-              marginBottom: '16px',
-            }}>
+        {/* ══ § 5 — CTA BAND ══ */}
+        <section ref={ctaRef} style={{ background: C.text, overflow: 'hidden', position: 'relative' }}>
+          {/* Ticker */}
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '10px 0', overflow: 'hidden' }}>
+            <div ref={tickerRef} style={{ display: 'inline-flex', whiteSpace: 'nowrap', willChange: 'transform' }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', paddingRight: 48 }}>
+                {tickerStr} &nbsp;&nbsp; {tickerStr}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ maxWidth: 820, margin: '0 auto', padding: 'clamp(64px,8vw,110px) clamp(20px,4vw,60px)', textAlign: 'center' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.26em', textTransform: 'uppercase', color: C.accent, marginBottom: 22 }}>Ready to write?</p>
+            <h2 ref={ctaHeadRef} style={{ fontSize: 'clamp(32px,5.5vw,64px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.04, color: C.white, marginBottom: 18 }}>
               Start writing today.
             </h2>
-            <p style={{
-              fontSize: '17px',
-              color: 'rgba(255,255,255,0.55)',
-              lineHeight: 1.7,
-              maxWidth: '420px',
-              margin: '0 auto 40px',
-            }}>
+            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.75, maxWidth: 360, margin: '0 auto 40px' }}>
               Create a free account and publish your first article in minutes.
             </p>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link
-                href="/register"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '13px 28px',
-                  background: '#fff',
-                  color: 'var(--text-primary)',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                  transition: 'background 0.2s ease, transform 0.15s ease',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = '#f0f0f0'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = '#fff'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }}
-              >
-                Create Free Account <ArrowRight />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link href="/register" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '11px 26px', borderRadius: 7,
+                background: C.white, color: C.text,
+                border: `1.5px solid ${C.white}`,
+                fontWeight: 700, fontSize: 13, textDecoration: 'none',
+                transition: 'filter .18s, transform .15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.93)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'none' }}>
+                Create Free Account <Arrow />
               </Link>
-
-              <Link
-                id="landing-signin-alt"
-                href="/login"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '13px 28px',
-                  background: 'transparent',
-                  color: 'rgba(255,255,255,0.7)',
-                  border: '1px solid rgba(255,255,255,0.22)',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                  transition: 'border-color 0.2s ease, color 0.2s ease',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.7)'
-                  e.currentTarget.style.color = '#fff'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
-                }}
-              >
+              <Link href="/login" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '11px 26px', borderRadius: 7,
+                background: 'transparent', color: 'rgba(255,255,255,0.65)',
+                border: '1.5px solid rgba(255,255,255,0.22)',
+                fontWeight: 600, fontSize: 13, textDecoration: 'none',
+                transition: 'border-color .2s, color .2s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.55)'; e.currentTarget.style.color = C.white }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)' }}>
                 Sign In
               </Link>
             </div>
@@ -746,75 +506,28 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* ─────────────────────── FOOTER ─────────────────────── */}
-      <footer style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
-        <div className="container-max" style={{ padding: 'clamp(40px, 6vw, 64px) clamp(20px, 5vw, 60px)' }}>
-
-          {/* Top row */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: '40px',
-            flexWrap: 'wrap',
-            marginBottom: '48px',
-          }}>
-            {/* Brand */}
-            <div style={{ maxWidth: '280px' }}>
-              <div style={{ marginBottom: '12px' }}>
-                <BlogramLogo size={18} />
-              </div>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                A modern, AI-powered publishing platform for curious thinkers and serious writers.
-              </p>
+      {/* ── FOOTER ── */}
+      <footer style={{ background: C.bg, borderTop: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(40px,5vw,60px) clamp(20px,4vw,60px)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 32, flexWrap: 'wrap', marginBottom: 44 }}>
+            <div style={{ maxWidth: 230 }}>
+              <div style={{ marginBottom: 11 }}><Logo /></div>
+              <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.75 }}>An AI-powered publishing platform for curious thinkers and serious writers.</p>
             </div>
-
-            {/* Link columns */}
-            <div style={{ display: 'flex', gap: 'clamp(32px, 6vw, 80px)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 'clamp(24px,5vw,64px)', flexWrap: 'wrap' }}>
               {[
-                {
-                  heading: 'Platform',
-                  links: [
-                    { label: 'Articles', href: '/dashboard' },
-                    { label: 'Create Post', href: '/editor' },
-                    { label: 'Profile', href: '/profile' },
-                  ],
-                },
-                {
-                  heading: 'Company',
-                  links: [
-                    { label: 'About', href: '/dashboard' },
-                    { label: 'Contact', href: '/dashboard' },
-                    { label: 'Privacy', href: '/dashboard' },
-                  ],
-                },
+                { heading: 'Platform', links: [{ label: 'Articles', href: '/dashboard' }, { label: 'Create Post', href: '/editor' }, { label: 'Profile', href: '/profile' }] },
+                { heading: 'Company',  links: [{ label: 'About', href: '/dashboard' }, { label: 'Contact', href: '/dashboard' }, { label: 'Privacy', href: '/dashboard' }] },
               ].map(col => (
                 <div key={col.heading}>
-                  <p style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '0.18em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-muted)',
-                    marginBottom: '16px',
-                  }}>
-                    {col.heading}
-                  </p>
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {col.links.map(link => (
-                      <li key={link.label}>
-                        <Link
-                          href={link.href}
-                          style={{
-                            fontSize: '13px',
-                            color: 'var(--text-secondary)',
-                            textDecoration: 'none',
-                            transition: 'color 0.2s ease',
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
-                        >
-                          {link.label}
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.muted, marginBottom: 14 }}>{col.heading}</p>
+                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {col.links.map(l => (
+                      <li key={l.label}>
+                        <Link href={l.href} style={{ fontSize: 13, color: C.muted, textDecoration: 'none', transition: 'color .2s' }}
+                          onMouseEnter={e => (e.currentTarget.style.color = C.text)}
+                          onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
+                          {l.label}
                         </Link>
                       </li>
                     ))}
@@ -822,101 +535,29 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-
-            {/* Social icons */}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: 7 }}>
               {[
-                {
-                  label: 'Twitter',
-                  href: '#',
-                  svg: (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                    </svg>
-                  ),
-                },
-                {
-                  label: 'GitHub',
-                  href: '#',
-                  svg: (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-                    </svg>
-                  ),
-                },
-                {
-                  label: 'RSS',
-                  href: '#',
-                  svg: (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 11a9 9 0 0 1 9 9" />
-                      <path d="M4 4a16 16 0 0 1 16 16" />
-                      <circle cx="5" cy="19" r="1" fill="currentColor" />
-                    </svg>
-                  ),
-                },
-              ].map(({ label, href, svg }) => (
-                <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-secondary)',
-                    transition: 'color 0.2s ease, border-color 0.2s ease, background 0.2s ease',
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = 'var(--text-primary)'
-                    e.currentTarget.style.borderColor = 'var(--text-primary)'
-                    e.currentTarget.style.background = 'var(--bg-white)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'var(--text-secondary)'
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                    e.currentTarget.style.background = 'transparent'
-                  }}
-                >
-                  {svg}
+                { label: 'Twitter', path: 'M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z' },
+                { label: 'GitHub',  path: 'M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22' },
+                { label: 'RSS',     path: 'M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M5 19a1 1 0 1 1-2 0 1 1 0 0 1 2 0z' },
+              ].map(s => (
+                <a key={s.label} href="#" aria-label={s.label}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 7, border: `1px solid ${C.border}`, color: C.muted, textDecoration: 'none', transition: 'color .2s, border-color .2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = 'rgba(255,106,0,0.3)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.borderColor = C.border }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d={s.path} /></svg>
                 </a>
               ))}
             </div>
           </div>
-
-          {/* Bottom row */}
-          <div style={{
-            borderTop: '1px solid var(--border)',
-            paddingTop: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '16px',
-            flexWrap: 'wrap',
-          }}>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              © {new Date().getFullYear()} Blogram. All rights reserved.
-            </p>
-            <div style={{ display: 'flex', gap: '24px' }}>
-              {['Terms', 'Privacy', 'Cookies'].map(item => (
-                <Link
-                  key={item}
-                  href="/dashboard"
-                  style={{
-                    fontSize: '12px',
-                    color: 'var(--text-muted)',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s ease',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                >
-                  {item}
+          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <p style={{ fontSize: 12, color: C.muted }}>© <span suppressHydrationWarning>{new Date().getFullYear()}</span> Blogram. All rights reserved.</p>
+            <div style={{ display: 'flex', gap: 20 }}>
+              {['Terms', 'Privacy', 'Cookies'].map(t => (
+                <Link key={t} href="/dashboard" style={{ fontSize: 12, color: C.muted, textDecoration: 'none', transition: 'color .2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = C.text)}
+                  onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
+                  {t}
                 </Link>
               ))}
             </div>
@@ -924,18 +565,15 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* ─────────────────────── RESPONSIVE HELPERS ─────────────────────── */}
       <style jsx global>{`
-        @media (max-width: 640px) {
-          .hidden-mobile { display: none !important; }
-        }
-        @media (max-width: 720px) {
-          .ai-feat-row {
-            grid-template-columns: 1fr !important;
-          }
-          .ai-feat-row > div:last-child {
-            display: none !important;
-          }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+        @keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+        @media (max-width: 760px) {
+          .hero-two-col { grid-template-columns: 1fr !important; }
+          .hero-two-col > div:last-child { display: none !important; }
+          .stats-grid { grid-template-columns: repeat(2,1fr) !important; }
         }
       `}</style>
     </div>

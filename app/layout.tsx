@@ -35,13 +35,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body
-        style={{
-          fontFamily: 'var(--font-inter), Inter, "Helvetica Neue", Helvetica, Arial, sans-serif',
-          WebkitFontSmoothing: 'antialiased',
-          MozOsxFontSmoothing: 'grayscale',
-        }}
-      >
+      <body className="antialiased" suppressHydrationWarning>
         <AuthProvider>
           {children}
         </AuthProvider>
