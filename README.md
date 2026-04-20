@@ -13,14 +13,20 @@
 
 ## 📸 Screenshots
 
+### Feed / Home
+![Feed](docs/screenshots/feed.png)
 
-| Page | Preview |
-|------|---------|
-| **Feed / Home** | `docs/screenshots/feed.png` |
-| **Blog Reader** | `docs/screenshots/reader.png` |
-| **Editor — AI Category** | `docs/screenshots/editor_ai_category.png` |
-| **Dashboard** | `docs/screenshots/dashboard.png` |
-| **Login / Register** | `docs/screenshots/auth.png` |
+### Blog Reader
+![Blog Reader](docs/screenshots/reader.png)
+
+### Editor — AI Category Prediction
+![Editor AI Category](docs/screenshots/editor_ai_category.png)
+
+### Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Login / Register
+![Auth](docs/screenshots/auth.png)
 ---
 
 ## ✨ Features
