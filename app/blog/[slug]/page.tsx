@@ -139,24 +139,23 @@ function RenderBlock({ block }: { block: ContentBlock }) {
 /* ── Like button ──────────────────────────────────────────── */
 function LikeButton({ slug, initialLikes, onLike }: { slug: string; initialLikes: number; onLike: () => void }) {
   const LIKED_KEY = `liked_${slug}`
-  const [liked, setLiked] = useState(false)
-  const [likes, setLikes] = useState(initialLikes)
+
+  // Read localStorage synchronously in the initializer — no effect, no lint violation
+  const [liked, setLiked] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem(LIKED_KEY) === '1'
+  })
+  // Local delta so we never mirror props into state
+  const [localLikeDelta, setLocalLikeDelta] = useState(0)
   const [burst, setBurst] = useState(false)
 
-  // Hydrate from localStorage so the liked state persists across page loads
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setLiked(localStorage.getItem(LIKED_KEY) === '1')
-    }
-  }, [LIKED_KEY])
-
-  // Keep likes count in sync with the live post data
-  useEffect(() => { setLikes(initialLikes) }, [initialLikes])
+  // Derived: always based on the authoritative prop + any optimistic increment we added
+  const likesToShow = initialLikes + localLikeDelta
 
   const handleLike = useCallback(() => {
     if (liked) return
     setLiked(true)
-    setLikes(l => l + 1)
+    setLocalLikeDelta(d => d + 1)
     setBurst(true)
     localStorage.setItem(LIKED_KEY, '1')
     onLike()
@@ -238,7 +237,7 @@ function LikeButton({ slug, initialLikes, onLike }: { slug: string; initialLikes
         padding: '0 8px',
         transition: 'background .22s, border-color .22s, color .22s',
       }}>
-        {likes.toLocaleString()}
+        {likesToShow.toLocaleString()}
       </span>
     </button>
   )
@@ -297,9 +296,13 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
   const { posts, likePost, addComment, incrementViews } = usePosts()
   const router = useRouter()
 
-  const [post, setPost]                     = useState<Post | null | undefined>(undefined)
+  // "Fallback" post loaded once from localStorage via lazy initializer — no effect, no lint violation
+  const [fallbackPost]                      = useState<Post | null | undefined>(() =>
+    getPostBySlug(slug)
+  )
   const [commentText, setCommentText]       = useState('')
-  const [commentName, setCommentName]       = useState(user?.name ?? '')
+  // Only used when no logged-in user; never mirrored from props
+  const [commentName, setCommentName]       = useState('')
   const [submittingComment, setSubmittingComment] = useState(false)
   const [commentError, setCommentError]     = useState('')
 
@@ -309,7 +312,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
 
   // Trigger enter animation on mount
   useEffect(() => {
-    const t = setTimeout(() => setPhase('visible'), 20) // next paint
+    const t = setTimeout(() => setPhase('visible'), 20)
     return () => clearTimeout(t)
   }, [])
 
@@ -322,26 +325,19 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
     exitTimerRef.current = setTimeout(() => router.push(href), 420)
   }, [phase, router])
 
-  // Load post from localStorage on first render
+  // Side-effect only: increment view count (no setState)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPost(getPostBySlug(slug))
     incrementViews(slug)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
-  // Sync live post data (likes, comments) whenever the usePosts state updates
-  useEffect(() => {
-    const live = posts.find((p) => p.slug === slug)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (live) setPost(live)
-  }, [posts, slug])
+  // Derive the live post directly from usePosts state — no setState needed
+  const livePost = posts.find((p) => p.slug === slug) ?? null
+  // Prefer the live (up-to-date) post; fall back to the localStorage snapshot while loading
+  const post = livePost ?? fallbackPost
 
-  // Sync commenter name with logged-in user
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (user) setCommentName(user.name)
-  }, [user])
+  // Derive the effective commenter name: logged-in user wins, guest fills in manually
+  const effectiveCommentName = user?.name ?? commentName
 
   const handleLike = useCallback(() => likePost(slug), [likePost, slug])
 
@@ -349,12 +345,12 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
     e.preventDefault()
     setCommentError('')
     if (!commentText.trim()) { setCommentError('Comment cannot be empty.'); return }
-    if (!commentName.trim()) { setCommentError('Please enter your name.'); return }
+    if (!effectiveCommentName.trim()) { setCommentError('Please enter your name.'); return }
     setSubmittingComment(true)
     await new Promise((r) => setTimeout(r, 300))
     addComment(slug, {
-      authorName: commentName.trim(),
-      authorInitials: commentName.trim().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
+      authorName: effectiveCommentName.trim(),
+      authorInitials: effectiveCommentName.trim().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
       text: commentText.trim(),
     })
     setCommentText('')
@@ -363,6 +359,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
 
   if (post === undefined) return <ArticleSkeleton />
   if (post === null)      return <PostNotFound slug={slug} />
+  // narrowed: post is Post from here on
 
   const hasBody    = post.body && post.body.length > 0
   const body       = hasBody ? post.body! : [{ type: 'paragraph' as const, text: post.excerpt }]

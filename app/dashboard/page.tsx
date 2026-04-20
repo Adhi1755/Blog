@@ -155,8 +155,8 @@ function ReaderDrawer({ post, onClose }: { post: Post | null; onClose: () => voi
           {post ? (
             <>
               {post.thumbnail && (
-                // eslint-disable-next-line @next/next/no-img-element
                 <div style={{ marginBottom: 28, borderRadius: 12, overflow: 'hidden', border: `1px solid ${C.border}` }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={post.thumbnail} alt={post.title} style={{ width: '100%', aspectRatio: '16/7', objectFit: 'cover', display: 'block' }} />
                 </div>
               )}
@@ -312,8 +312,8 @@ function PostCard({ post, index, onClick }: { post: Post; index: number; onClick
       >
         {/* Thumbnail */}
         {post.thumbnail ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <div style={{ width: '100%', aspectRatio: '16/9', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={post.thumbnail} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .4s ease' }}
               onMouseEnter={e => ((e.target as HTMLElement).style.transform = 'scale(1.04)')}
               onMouseLeave={e => ((e.target as HTMLElement).style.transform = 'none')} />
