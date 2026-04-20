@@ -134,11 +134,6 @@ function CheckIcon() {
   )
 }
 
-/* ── Reusable input wrapper shared state ─────────────────────────── */
-function useInputFocus() {
-  const [focused, setFocused] = useState(false)
-  return { focused, onFocus: () => setFocused(true), onBlur: () => setFocused(false) }
-}
 
 /* ── Page ─────────────────────────────────────────────────────────── */
 export default function RegisterPage() {
@@ -231,8 +226,8 @@ export default function RegisterPage() {
         {/* Top-left logo */}
         <div style={{ position: 'relative', zIndex: 2, padding: '40px 48px 0' }}>
           <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline', gap: '2px' }}>
-            <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.04em', color: '#fff' }}>Blog</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--accent)' }}>Space</span>
+            <span style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--accent)' }}>BLOG</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.05em', color: '#fff' }}>RAM</span>
           </Link>
         </div>
 
@@ -311,7 +306,7 @@ export default function RegisterPage() {
             border: '1px solid rgba(255,255,255,0.08)',
           }}>
             <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, fontStyle: 'italic', marginBottom: '12px' }}>
-              &ldquo;BlogSpace completely transformed how I share my engineering insights. The editor is beautiful and my readership grew 4x in 3 months.&rdquo;
+              &ldquo;Blogram completely transformed how I share my engineering insights. The editor is beautiful and my readership grew 4x in 3 months.&rdquo;
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
@@ -371,8 +366,8 @@ export default function RegisterPage() {
           {/* Mobile-only logo */}
           <div className="auth-mobile-logo" style={{ marginBottom: '28px' }}>
             <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline', gap: '2px' }}>
-              <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--text-primary)' }}>Blog</span>
-              <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--accent)' }}>Space</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--accent)' }}>BLOG</span>
+              <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.05em', color: 'var(--text-primary)' }}>RAM</span>
             </Link>
           </div>
 

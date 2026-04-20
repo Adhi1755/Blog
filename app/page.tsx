@@ -1,236 +1,165 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './context/AuthContext'
 
 /* ─────────────────────────────────────────────────────────────────────────
-   STATIC DATA  (replace with real API calls as needed)
+   ICONS
 ───────────────────────────────────────────────────────────────────────── */
-const FEATURED_POSTS = [
-  {
-    id: 1,
-    category: 'Design',
-    title: 'The quiet revolution of Swiss grid systems in digital design',
-    excerpt:
-      'How a 70-year-old typographic tradition quietly became the backbone of every modern interface — and why it still matters more than ever.',
-    author: 'Mia Linden',
-    date: 'Apr 18, 2026',
-    readTime: '6 min read',
-    image:
-      'https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=1200&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 2,
-    category: 'Technology',
-    title: 'Building for the long term: architecture decisions that age well',
-    excerpt:
-      'A candid look at the engineering choices that compound in value over time — and the ones that become liabilities the moment you ship.',
-    author: 'James Park',
-    date: 'Apr 15, 2026',
-    readTime: '8 min read',
-    image:
-      'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1200&q=80&auto=format&fit=crop',
-  },
-]
-
-const GRID_POSTS = [
-  {
-    id: 3,
-    category: 'AI',
-    title: "Prompting as a craft: what good writers know that engineers don't",
-    excerpt:
-      'Writing good prompts has more in common with editorial journalism than software engineering.',
-    author: 'Sara Okafor',
-    date: 'Apr 12, 2026',
-    readTime: '5 min read',
-    image:
-      'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=800&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 4,
-    category: 'Business',
-    title: 'The economics of attention in a distracted world',
-    excerpt:
-      "Why the scariest thing about the attention economy isn't what it takes — it's what it gives back.",
-    author: 'Leo Marín',
-    date: 'Apr 10, 2026',
-    readTime: '7 min read',
-    image:
-      'https://images.unsplash.com/photo-1579621970795-87facc2f976d?w=800&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 5,
-    category: 'Design',
-    title: "White space is not empty space — it's a design decision",
-    excerpt:
-      "Every pixel left blank is a choice. Here's how intentional whitespace transforms layouts from good to great.",
-    author: 'Ami Chen',
-    date: 'Apr 8, 2026',
-    readTime: '4 min read',
-    image:
-      'https://images.unsplash.com/photo-1545239351-ef35f43d514b?w=800&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 6,
-    category: 'Technology',
-    title: 'On the hidden cost of moving fast',
-    excerpt:
-      "Technical debt isn't just code. It's decisions, culture, and the quiet erosion of your team's ability to think clearly.",
-    author: 'James Park',
-    date: 'Apr 5, 2026',
-    readTime: '9 min read',
-    image:
-      'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 7,
-    category: 'AI',
-    title: 'The model is not the product — and other hard lessons',
-    excerpt:
-      "After a year of building AI-native applications, here is what we wish we'd understood from day one.",
-    author: 'Sara Okafor',
-    date: 'Apr 1, 2026',
-    readTime: '6 min read',
-    image:
-      'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 8,
-    category: 'Business',
-    title: "Founder mode is a myth — but the energy behind it isn't",
-    excerpt:
-      "The viral essay had the right instinct but the wrong frame. Here's what high-agency leadership actually looks like in practice.",
-    author: 'Leo Marín',
-    date: 'Mar 28, 2026',
-    readTime: '5 min read',
-    image:
-      'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&q=80&auto=format&fit=crop',
-  },
-]
-
-const CATEGORIES = ['All', 'Tech', 'Business', 'AI', 'Design']
-
-const NAV_LINKS = [
-  { label: 'Home',       href: '/'           },
-  { label: 'Articles',   href: '/dashboard'  },
-  { label: 'Categories', href: '/dashboard'  },
-  { label: 'About',      href: '/dashboard'  },
-]
-
-/* ─────────────────────────────────────────────────────────────────────────
-   SUBCOMPONENTS
-───────────────────────────────────────────────────────────────────────── */
-
-function SearchIcon() {
-  return (
-    <svg
-      width="17" height="17" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <path d="M21 21l-4.35-4.35" />
-    </svg>
-  )
-}
-
 function ArrowRight({ size = 16 }: { size?: number }) {
   return (
-    <svg
-      width={size} height={size} viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round"
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12h14M12 5l7 7-7 7" />
     </svg>
   )
 }
 
-interface PostCardProps {
-  post: (typeof GRID_POSTS)[number]
-  priority?: boolean
-}
-
-function PostCard({ post, priority = false }: PostCardProps) {
+function LockIcon() {
   return (
-    <article className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="card-img" style={{ height: '220px', flexShrink: 0 }}>
-        <Image
-          src={post.image}
-          alt={post.title}
-          width={800}
-          height={500}
-          priority={priority}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      </div>
-
-      <div style={{ padding: '28px 28px 32px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <span className="category-chip" style={{ marginBottom: '14px' }}>
-          {post.category}
-        </span>
-
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: 700,
-          lineHeight: 1.3,
-          color: 'var(--text-primary)',
-          marginBottom: '12px',
-          letterSpacing: '-0.02em',
-        }}>
-          {post.title}
-        </h3>
-
-        <p style={{
-          fontSize: '14px',
-          lineHeight: 1.7,
-          color: 'var(--text-secondary)',
-          marginBottom: '24px',
-          flex: 1,
-        }}>
-          {post.excerpt}
-        </p>
-
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderTop: '1px solid var(--border)',
-          paddingTop: '18px',
-        }}>
-          <div>
-            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px' }}>
-              {post.author}
-            </p>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              {post.date} · {post.readTime}
-            </p>
-          </div>
-          <Link
-            href="/dashboard"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: 'var(--text-secondary)',
-              textDecoration: 'none',
-              transition: 'color 0.2s ease',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
-          >
-            Read <ArrowRight size={13} />
-          </Link>
-        </div>
-      </div>
-    </article>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
   )
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LOGO — shared across nav and footer
+───────────────────────────────────────────────────────────────────────── */
+function BlogramLogo({ size = 20 }: { size?: number }) {
+  return (
+    <Link
+      href="/"
+      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline', gap: '0px' }}
+    >
+      <span style={{
+        fontSize: `${size}px`,
+        fontWeight: 800,
+        letterSpacing: '-0.03em',
+        color: 'var(--accent)',       /* BLOG in orange */
+        lineHeight: 1,
+      }}>
+        BLOG
+      </span>
+      <span style={{
+        fontSize: `${size}px`,
+        fontWeight: 900,
+        letterSpacing: '-0.05em',
+        color: 'var(--text-primary)', /* RAM in black */
+        lineHeight: 1,
+      }}>
+        RAM
+      </span>
+    </Link>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   AI FEATURES DATA
+───────────────────────────────────────────────────────────────────────── */
+const AI_FEATURES = [
+  {
+    id: 'classify',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <path d="M17.5 14h.01M14 17.5h.01M21 17.5h.01M17.5 21h.01M14 14l3.5 3.5M21 14l-3.5 3.5M14 21l3.5-3.5M21 21l-3.5-3.5"/>
+      </svg>
+    ),
+    label: 'ML Classification',
+    title: 'Auto-categorize every post',
+    body: 'A machine learning model trained on thousands of articles automatically classifies each post into the right category — no manual tagging needed.',
+  },
+  {
+    id: 'summarize',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+      </svg>
+    ),
+    label: 'AI Summarization',
+    title: 'TL;DR powered by AI',
+    body: 'Every article gets an AI-generated summary so readers can decide in seconds whether to dive in — and writers reach people who are short on time.',
+  },
+  {
+    id: 'recommend',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+      </svg>
+    ),
+    label: 'Smart Recommendations',
+    title: 'A feed that learns from you',
+    body: "The recommendation engine analyses your reading behaviour to surface articles you'll actually want to read — not just the most-viewed ones.",
+  },
+  {
+    id: 'editor',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    ),
+    label: 'Rich Markdown Editor',
+    title: 'Write in Markdown, beautifully',
+    body: "A distraction-free editor with live preview, syntax highlighting, image embeds, and draft auto-save — everything a serious writer actually needs.",
+  },
+]
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PLATFORM PILLARS DATA
+───────────────────────────────────────────────────────────────────────── */
+const PILLARS = [
+  {
+    icon: '✦',
+    title: 'Write anything',
+    body: "Rich Markdown editor, image uploads, drafts — everything a serious writer needs, nothing they don't.",
+  },
+  {
+    icon: '◈',
+    title: 'Read the feed',
+    body: 'A curated reading experience. Browse posts, expand inline, and discover writing that earns your attention.',
+  },
+  {
+    icon: '◎',
+    title: 'Own your content',
+    body: 'Edit, update, or delete your posts at any time. Your words are yours — always.',
+  },
+]
+
+/* ─────────────────────────────────────────────────────────────────────────
+   GATED STORY PREVIEWS
+───────────────────────────────────────────────────────────────────────── */
+const STORY_PREVIEWS = [
+  {
+    category: 'Design',
+    title: 'The quiet revolution of Swiss grid systems in digital interfaces',
+    excerpt: 'How a 70-year-old typographic tradition quietly became the backbone of every modern UI.',
+  },
+  {
+    category: 'AI',
+    title: "Prompting as a craft: what good writers know that engineers don't",
+    excerpt: 'Writing effective prompts has more in common with editorial journalism than software engineering.',
+  },
+  {
+    category: 'Technology',
+    title: 'Building for the long term: architecture decisions that age well',
+    excerpt: 'The engineering choices that compound in value — and the ones that become liabilities the moment you ship.',
+  },
+]
 
 /* ─────────────────────────────────────────────────────────────────────────
    MAIN PAGE
@@ -238,9 +167,6 @@ function PostCard({ post, priority = false }: PostCardProps) {
 export default function LandingPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [activeCategory, setActiveCategory] = useState('All')
-  const [email, setEmail] = useState('')
-  const [subscribed, setSubscribed] = useState(false)
 
   useEffect(() => {
     if (!loading && user) router.replace('/dashboard')
@@ -248,133 +174,75 @@ export default function LandingPage() {
 
   if (loading || user) return null
 
-  function handleSubscribe(e: React.FormEvent) {
-    e.preventDefault()
-    if (email.trim()) {
-      setSubscribed(true)
-      setEmail('')
-    }
-  }
-
-  const filteredPosts =
-    activeCategory === 'All'
-      ? GRID_POSTS
-      : GRID_POSTS.filter(p =>
-          p.category.toLowerCase() === activeCategory.toLowerCase()
-        )
-
   return (
     <div style={{ background: 'var(--bg-page)', minHeight: '100vh', color: 'var(--text-primary)' }}>
 
       {/* ─────────────────────── NAV ─────────────────────── */}
+      {/* No bottom border, minimal, right-aligned nav */}
       <header style={{
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        background: 'rgba(247,247,247,0.92)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid var(--border)',
+        background: 'rgba(247,247,247,0.94)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        /* No border-bottom — clean look */
       }}>
         <div className="container-max" style={{
           height: '64px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '24px',
+          gap: '32px',
         }}>
           {/* Logo */}
-          <Link
-            href="/"
-            style={{ textDecoration: 'none', display: 'flex', alignItems: 'baseline', gap: '3px', flexShrink: 0 }}
-          >
-            <span style={{
-              fontSize: '20px',
-              fontWeight: 900,
-              letterSpacing: '-0.04em',
-              color: 'var(--text-primary)',
-            }}>
-              Blog
-            </span>
-            <span style={{
-              fontSize: '20px',
-              fontWeight: 900,
-              letterSpacing: '-0.04em',
-              color: 'var(--accent)',
-            }}>
-              Space
-            </span>
-          </Link>
+          <BlogramLogo size={19} />
 
-          {/* Center nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '32px' }} className="hidden-mobile">
-            {NAV_LINKS.map(({ label, href }) => (
-              <Link
-                key={label}
-                href={href}
-                className="nav-link"
-                style={{ fontFamily: 'var(--font-sans)' }}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Right actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
-            {/* Search */}
-            <button
-              aria-label="Search"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '4px',
-                transition: 'color 0.2s ease',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+          {/* Right side: Home + Sign In only */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+            <Link
+              href="/"
+              className="nav-link"
+              style={{ fontFamily: 'var(--font-sans)' }}
             >
-              <SearchIcon />
-            </button>
-
-            <Link id="landing-signin" href="/login" className="nav-link" style={{ fontFamily: 'var(--font-sans)' }}>
-              Sign In
+              Home
             </Link>
 
             <Link
-              id="landing-signup"
-              href="/register"
+              id="landing-signin"
+              href="/login"
               className="btn btn-solid"
-              style={{ padding: '9px 20px', fontSize: '13px', borderRadius: '8px' }}
+              style={{ padding: '9px 22px', fontSize: '13px', borderRadius: '8px' }}
             >
-              Subscribe
+              Sign In
             </Link>
           </div>
         </div>
+
+        {/* Thin separator line — very subtle, not heavy */}
+        <div style={{ height: '1px', background: 'var(--border)', opacity: 0.6 }} />
       </header>
 
       <main>
+
         {/* ─────────────────────── HERO ─────────────────────── */}
         <section style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="container-max" style={{
-            paddingTop: 'clamp(80px, 10vw, 130px)',
-            paddingBottom: 'clamp(80px, 10vw, 130px)',
+            paddingTop: 'clamp(88px, 12vw, 144px)',
+            paddingBottom: 'clamp(88px, 12vw, 144px)',
           }}>
-            <div style={{ maxWidth: '820px' }}>
+            <div style={{ maxWidth: '840px' }}>
+
               {/* Kicker */}
               <p className="label-xs animate-fade-up" style={{ marginBottom: '28px' }}>
-                Latest Insights
+                A Platform for Serious Writing
               </p>
 
-              {/* Hero title */}
+              {/* Hero headline */}
               <h1
                 className="animate-fade-up delay-1"
                 style={{
-                  fontSize: 'clamp(52px, 7.5vw, 88px)',
+                  fontSize: 'clamp(48px, 7.5vw, 90px)',
                   fontWeight: 900,
                   lineHeight: 1.0,
                   letterSpacing: '-0.04em',
@@ -382,246 +250,355 @@ export default function LandingPage() {
                   marginBottom: '28px',
                 }}
               >
-                Thoughts, stories,<br />
+                Thoughts, stories,
+                <br />
                 <span style={{ color: 'var(--text-secondary)' }}>and ideas for</span>
                 <br />curious minds.
               </h1>
 
-              {/* Description */}
+              {/* Sub-copy */}
               <p
                 className="animate-fade-up delay-2"
                 style={{
                   fontSize: '18px',
-                  lineHeight: 1.75,
+                  lineHeight: 1.78,
                   color: 'var(--text-secondary)',
-                  maxWidth: '540px',
-                  marginBottom: '44px',
+                  maxWidth: '520px',
+                  marginBottom: '48px',
                 }}
               >
-                Publish and discover in-depth articles, tutorials, and perspectives on
-                modern web development — written by engineers, for curious minds.
+                Blogram is a writing platform powered by AI. Publish in-depth articles,
+                discover curated reads, and let intelligent tools work quietly in the background.
               </p>
 
               {/* CTAs */}
-              <div className="animate-fade-up delay-3" style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-                <Link id="landing-explore" href="/dashboard" className="btn btn-outline">
-                  Explore Articles <ArrowRight />
-                </Link>
+              <div
+                className="animate-fade-up delay-3"
+                style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}
+              >
                 <Link id="landing-get-started" href="/register" className="btn btn-solid">
-                  Start Writing Free
+                  Start Writing Free <ArrowRight />
+                </Link>
+                <Link id="landing-signin-hero" href="/login" className="btn btn-outline">
+                  Sign In
                 </Link>
               </div>
-            </div>
-
-            {/* Stats strip */}
-            <div
-              className="animate-fade-up delay-4"
-              style={{
-                display: 'flex',
-                gap: 'clamp(32px, 6vw, 72px)',
-                marginTop: 'clamp(56px, 8vw, 100px)',
-                paddingTop: '40px',
-                borderTop: '1px solid var(--border)',
-                flexWrap: 'wrap',
-              }}
-            >
-              {[
-                { value: '2.4K+', label: 'Articles Published' },
-                { value: '18K+', label: 'Monthly Readers' },
-                { value: '340+', label: 'Contributors' },
-              ].map(({ value, label }) => (
-                <div key={label}>
-                  <p style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 }}>
-                    {value}
-                  </p>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px', letterSpacing: '0.02em' }}>
-                    {label}
-                  </p>
-                </div>
-              ))}
             </div>
           </div>
         </section>
 
-        {/* ─────────────────────── FEATURED ─────────────────────── */}
-        <section className="section-pad" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="container-max">
+        {/* ─────────────────────── STORIES (GATED) ─────────────────────── */}
+        {/*
+            Section shows a preview of story cards.
+            The entire clickable overlay redirects unauthenticated users to /login.
+            Cards are intentionally blurred/locked — nothing real is revealed.
+        */}
+        <section style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="container-max section-pad">
+
             {/* Section header */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              marginBottom: '48px',
-              gap: '24px',
-              flexWrap: 'wrap',
-            }}>
-              <div>
-                <p className="label-xs" style={{ marginBottom: '12px' }}>Featured Reading</p>
+            <div style={{ marginBottom: '48px' }}>
+              <p className="label-xs" style={{ marginBottom: '12px' }}>Reading</p>
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+                gap: '24px',
+                flexWrap: 'wrap',
+              }}>
                 <h2 style={{
-                  fontSize: 'clamp(28px, 3.5vw, 38px)',
+                  fontSize: 'clamp(26px, 3.5vw, 38px)',
                   fontWeight: 800,
                   letterSpacing: '-0.03em',
                   lineHeight: 1.1,
                 }}>
                   Stories worth your time
                 </h2>
+                <Link
+                  href="/login"
+                  className="btn btn-outline"
+                  style={{ padding: '9px 20px', flexShrink: 0 }}
+                >
+                  Sign in to read <ArrowRight size={14} />
+                </Link>
               </div>
-              <Link href="/dashboard" className="btn btn-outline" style={{ padding: '9px 20px' }}>
-                View All <ArrowRight />
-              </Link>
             </div>
 
-            {/* Featured 2-up grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
-              gap: 'var(--card-gap)',
-            }}>
-              {FEATURED_POSTS.map((post, i) => (
-                <article key={post.id} className="card" style={{ background: 'var(--bg-white)' }}>
-                  {/* Image */}
-                  <div className="card-img" style={{ height: 'clamp(220px, 30vw, 340px)' }}>
-                    <Image
-                      src={post.image}
-                      alt={post.title}
-                      width={1200}
-                      height={800}
-                      priority={i === 0}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </div>
-
-                  {/* Body */}
-                  <div style={{ padding: 'clamp(24px, 3vw, 40px)' }}>
-                    <span className="category-chip" style={{ marginBottom: '16px', display: 'block' }}>
-                      {post.category}
+            {/* Gated preview cards */}
+            <div style={{ position: 'relative' }}>
+              {/* Cards — intentionally desaturated/blurred to signal gating */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
+                gap: '28px',
+              }}>
+                {STORY_PREVIEWS.map((story, i) => (
+                  <div
+                    key={story.title}
+                    style={{
+                      background: 'var(--bg-white)',
+                      borderRadius: '14px',
+                      padding: '28px',
+                      border: '1px solid var(--border)',
+                      opacity: i === 0 ? 0.92 : i === 1 ? 0.6 : 0.33,
+                      filter: i === 0 ? 'none' : i === 1 ? 'blur(1.5px)' : 'blur(3px)',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      color: 'var(--accent)',
+                      display: 'block',
+                      marginBottom: '14px',
+                    }}>
+                      {story.category}
                     </span>
-
                     <h3 style={{
-                      fontSize: 'clamp(20px, 2.5vw, 26px)',
+                      fontSize: '17px',
+                      fontWeight: 700,
+                      lineHeight: 1.3,
+                      letterSpacing: '-0.02em',
+                      color: 'var(--text-primary)',
+                      marginBottom: '12px',
+                    }}>
+                      {story.title}
+                    </h3>
+                    <p style={{
+                      fontSize: '14px',
+                      lineHeight: 1.7,
+                      color: 'var(--text-secondary)',
+                    }}>
+                      {story.excerpt}
+                    </p>
+                    {/* Fake metadata */}
+                    <div style={{
+                      marginTop: '24px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid var(--border)',
+                      display: 'flex',
+                      gap: '8px',
+                      alignItems: 'center',
+                    }}>
+                      <div style={{
+                        width: '26px', height: '26px', borderRadius: '50%',
+                        background: 'var(--bg-muted)', flexShrink: 0,
+                      }} />
+                      <div style={{
+                        height: '10px', borderRadius: '4px',
+                        background: 'var(--bg-muted)', width: '100px',
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Full-overlay CTA — transparent clickable layer on top */}
+              <Link
+                href="/login"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '16px',
+                  textDecoration: 'none',
+                  borderRadius: '14px',
+                  /* subtle frosted-glass center badge only */
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px',
+                  background: 'rgba(247,247,247,0.9)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '16px',
+                  padding: '28px 40px',
+                  textAlign: 'center',
+                  boxShadow: '0 8px 40px -8px rgba(0,0,0,0.12)',
+                }}>
+                  <span style={{ color: 'var(--text-secondary)', display: 'flex' }}>
+                    <LockIcon />
+                  </span>
+                  <p style={{
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    letterSpacing: '-0.02em',
+                  }}>
+                    Sign in to read
+                  </p>
+                  <p style={{
+                    fontSize: '13px',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.6,
+                    maxWidth: '220px',
+                  }}>
+                    Create a free account or sign in to unlock every article on Blogram.
+                  </p>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginTop: '4px',
+                    padding: '10px 22px',
+                    background: 'var(--text-primary)',
+                    color: '#fff',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    letterSpacing: '0.02em',
+                  }}>
+                    Sign In <ArrowRight size={13} />
+                  </span>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────────────── AI FEATURES ─────────────────────── */}
+        <section style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-white)' }}>
+          <div className="container-max section-pad">
+
+            {/* Section header */}
+            <div style={{ maxWidth: '600px', marginBottom: 'clamp(48px, 6vw, 80px)' }}>
+              <p className="label-xs" style={{ marginBottom: '12px' }}>Intelligence</p>
+              <h2 style={{
+                fontSize: 'clamp(28px, 3.5vw, 40px)',
+                fontWeight: 800,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                marginBottom: '16px',
+              }}>
+                AI working quietly in the background
+              </h2>
+              <p style={{
+                fontSize: '16px',
+                lineHeight: 1.75,
+                color: 'var(--text-secondary)',
+              }}>
+                Blogram integrates machine learning at every layer — from the moment you publish
+                to the moment a reader discovers your work.
+              </p>
+            </div>
+
+            {/* Feature rows — alternating text + visual panel */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {AI_FEATURES.map((feat, idx) => (
+                <div
+                  key={feat.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0',
+                    background: 'var(--bg-page)',
+                    borderRadius: idx === 0 ? '14px 14px 0 0' : idx === AI_FEATURES.length - 1 ? '0 0 14px 14px' : '0',
+                    overflow: 'hidden',
+                  }}
+                  className="ai-feat-row"
+                >
+                  {/* Text side */}
+                  <div style={{
+                    padding: 'clamp(32px, 4vw, 52px)',
+                    borderRight: '1px solid var(--border)',
+                    order: idx % 2 === 0 ? 1 : 2,
+                  }}>
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '10px',
+                      background: 'rgba(255,106,0,0.08)',
+                      color: 'var(--accent)',
+                      marginBottom: '20px',
+                    }}>
+                      {feat.icon}
+                    </div>
+                    <p style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      color: 'var(--accent)',
+                      marginBottom: '10px',
+                    }}>
+                      {feat.label}
+                    </p>
+                    <h3 style={{
+                      fontSize: 'clamp(18px, 2vw, 22px)',
                       fontWeight: 800,
                       letterSpacing: '-0.03em',
                       lineHeight: 1.2,
                       color: 'var(--text-primary)',
-                      marginBottom: '14px',
+                      marginBottom: '12px',
                     }}>
-                      {post.title}
+                      {feat.title}
                     </h3>
-
                     <p style={{
                       fontSize: '15px',
                       lineHeight: 1.75,
                       color: 'var(--text-secondary)',
-                      marginBottom: '28px',
                     }}>
-                      {post.excerpt}
+                      {feat.body}
                     </p>
+                  </div>
 
+                  {/* Decorative accent panel */}
+                  <div style={{
+                    padding: 'clamp(32px, 4vw, 52px)',
+                    background: 'var(--bg-white)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    order: idx % 2 === 0 ? 2 : 1,
+                    minHeight: '180px',
+                  }}>
+                    {/* Abstract visual — index-number watermark */}
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      borderTop: '1px solid var(--border)',
-                      paddingTop: '20px',
+                      justifyContent: 'center',
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '50%',
+                      border: '1.5px solid var(--border)',
+                      position: 'relative',
                     }}>
-                      <div>
-                        <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '2px' }}>{post.author}</p>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                          {post.date} · {post.readTime}
-                        </p>
-                      </div>
-                      <Link
-                        href="/dashboard"
-                        className="btn btn-outline"
-                        style={{ padding: '8px 18px', fontSize: '12px' }}
-                      >
-                        Read <ArrowRight size={13} />
-                      </Link>
+                      <span style={{
+                        fontSize: '28px',
+                        fontWeight: 900,
+                        letterSpacing: '-0.05em',
+                        color: 'var(--text-faint)',
+                        lineHeight: 1,
+                      }}>
+                        0{idx + 1}
+                      </span>
                     </div>
                   </div>
-                </article>
+                </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ─────────────────────── CATEGORY FILTER + GRID ─────────────────────── */}
-        <section className="section-pad" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="container-max">
-            {/* Section header */}
-            <div style={{ marginBottom: '40px' }}>
-              <p className="label-xs" style={{ marginBottom: '12px' }}>Browse by Topic</p>
-              <h2 style={{
-                fontSize: 'clamp(28px, 3.5vw, 38px)',
-                fontWeight: 800,
-                letterSpacing: '-0.03em',
-                lineHeight: 1.1,
-              }}>
-                Latest articles
-              </h2>
-            </div>
-
-            {/* Filter tabs */}
-            <div
-              role="tablist"
-              aria-label="Article categories"
-              style={{
-                display: 'flex',
-                gap: '32px',
-                marginBottom: '48px',
-                borderBottom: '1px solid var(--border)',
-                overflowX: 'auto',
-                paddingBottom: '0',
-              }}
-            >
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat}
-                  role="tab"
-                  id={`tab-${cat.toLowerCase()}`}
-                  aria-selected={activeCategory === cat}
-                  className={`filter-tab${activeCategory === cat ? ' active' : ''}`}
-                  onClick={() => setActiveCategory(cat)}
-                  style={{ fontFamily: 'var(--font-sans)' }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {/* Grid */}
-            {filteredPosts.length > 0 ? (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
-                gap: 'var(--card-gap)',
-              }}>
-                {filteredPosts.map((post, i) => (
-                  <PostCard key={post.id} post={post} priority={i === 0} />
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-muted)' }}>
-                <p style={{ fontSize: '16px' }}>No articles in this category yet.</p>
-              </div>
-            )}
-
-            {/* Load more */}
-            <div style={{ textAlign: 'center', marginTop: '56px' }}>
-              <Link href="/dashboard" className="btn btn-outline">
-                Load More Articles <ArrowRight />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────────────── WHAT WE OFFER ─────────────────────── */}
-        <section style={{
-          background: 'var(--bg-white)',
-          borderBottom: '1px solid var(--border)',
-        }}>
+        {/* ─────────────────────── BUILT FOR SERIOUS WRITING ─────────────────────── */}
+        <section style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="container-max section-pad">
-            <div style={{ marginBottom: '56px' }}>
+
+            {/* Section header */}
+            <div style={{ marginBottom: 'clamp(40px, 5vw, 64px)' }}>
               <p className="label-xs" style={{ marginBottom: '12px' }}>The Platform</p>
               <h2 style={{
                 fontSize: 'clamp(28px, 3.5vw, 38px)',
@@ -632,6 +609,8 @@ export default function LandingPage() {
                 Built for serious writing
               </h2>
             </div>
+
+            {/* Pillars — separated by 1px borders */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
@@ -640,35 +619,19 @@ export default function LandingPage() {
               borderRadius: '14px',
               overflow: 'hidden',
             }}>
-              {[
-                {
-                  title: 'Write anything',
-                  body: 'Rich editor, thumbnail uploads, drafts — everything a serious writer needs.',
-                  icon: '✦',
-                },
-                {
-                  title: 'Read the feed',
-                  body: 'Browse all posts in one place. Click to expand and read inline without leaving.',
-                  icon: '◈',
-                },
-                {
-                  title: 'Own your content',
-                  body: 'Edit and delete your posts from your profile at any time, no questions asked.',
-                  icon: '◎',
-                },
-              ].map(({ title, body, icon }) => (
+              {PILLARS.map(({ icon, title, body }) => (
                 <div
                   key={title}
                   style={{
                     background: 'var(--bg-white)',
-                    padding: 'clamp(32px, 4vw, 56px)',
+                    padding: 'clamp(28px, 4vw, 52px)',
                   }}
                 >
                   <span style={{
-                    fontSize: '24px',
+                    fontSize: '22px',
                     color: 'var(--accent)',
                     display: 'block',
-                    marginBottom: '20px',
+                    marginBottom: '18px',
                   }}>
                     {icon}
                   </span>
@@ -680,7 +643,7 @@ export default function LandingPage() {
                   }}>
                     {title}
                   </h3>
-                  <p style={{ fontSize: '14px', lineHeight: 1.75, color: 'var(--text-secondary)' }}>
+                  <p style={{ fontSize: '14px', lineHeight: 1.78, color: 'var(--text-secondary)' }}>
                     {body}
                   </p>
                 </div>
@@ -689,101 +652,18 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ─────────────────────── NEWSLETTER ─────────────────────── */}
-        <section className="section-pad" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="container-max">
-            <div style={{
-              maxWidth: '600px',
-              margin: '0 auto',
-              textAlign: 'center',
-            }}>
-              <p className="label-xs" style={{ marginBottom: '20px' }}>Newsletter</p>
-              <h2 style={{
-                fontSize: 'clamp(28px, 4vw, 44px)',
-                fontWeight: 800,
-                letterSpacing: '-0.04em',
-                lineHeight: 1.1,
-                marginBottom: '16px',
-              }}>
-                Stay updated
-              </h2>
-              <p style={{
-                fontSize: '16px',
-                color: 'var(--text-secondary)',
-                lineHeight: 1.7,
-                marginBottom: '40px',
-              }}>
-                One email, once a week — the best articles, hand-picked by our editors. No noise, unsubscribe anytime.
-              </p>
-
-              {subscribed ? (
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '16px 32px',
-                  background: 'var(--bg-white)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '12px',
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                }}>
-                  <span style={{ color: 'var(--accent)', fontSize: '18px' }}>✓</span>
-                  You're on the list — welcome aboard!
-                </div>
-              ) : (
-                <form
-                  onSubmit={handleSubscribe}
-                  style={{
-                    display: 'flex',
-                    gap: '12px',
-                    maxWidth: '440px',
-                    margin: '0 auto',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <input
-                    id="newsletter-email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="Your email address"
-                    className="input-field"
-                    style={{ flex: '1 1 220px', minWidth: '0' }}
-                  />
-                  <button
-                    id="newsletter-submit"
-                    type="submit"
-                    className="btn btn-solid"
-                    style={{ flexShrink: 0 }}
-                  >
-                    Subscribe
-                  </button>
-                </form>
-              )}
-
-              <p style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                Join 18,000+ curious minds. No spam, ever.
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* ─────────────────────── FINAL CTA ─────────────────────── */}
         <section style={{ background: 'var(--text-primary)' }}>
           <div className="container-max section-pad" style={{ textAlign: 'center' }}>
             <p style={{
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 700,
-              letterSpacing: '0.2em',
+              letterSpacing: '0.22em',
               textTransform: 'uppercase',
               color: 'var(--accent)',
               marginBottom: '24px',
             }}>
-              Ready to contribute?
+              Ready to write?
             </p>
             <h2 style={{
               fontSize: 'clamp(32px, 5vw, 56px)',
@@ -791,20 +671,20 @@ export default function LandingPage() {
               letterSpacing: '-0.04em',
               lineHeight: 1.05,
               color: '#fff',
-              marginBottom: '20px',
+              marginBottom: '16px',
             }}>
               Start writing today.
             </h2>
             <p style={{
               fontSize: '17px',
-              color: 'rgba(255,255,255,0.6)',
-              marginBottom: '40px',
-              maxWidth: '440px',
+              color: 'rgba(255,255,255,0.55)',
+              lineHeight: 1.7,
+              maxWidth: '420px',
               margin: '0 auto 40px',
-              lineHeight: 1.65,
             }}>
-              Join thousands of developers sharing what they know, for free.
+              Create a free account and publish your first article in minutes.
             </p>
+
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link
                 href="/register"
@@ -832,6 +712,7 @@ export default function LandingPage() {
               >
                 Create Free Account <ArrowRight />
               </Link>
+
               <Link
                 id="landing-signin-alt"
                 href="/login"
@@ -842,7 +723,7 @@ export default function LandingPage() {
                   padding: '13px 28px',
                   background: 'transparent',
                   color: 'rgba(255,255,255,0.7)',
-                  border: '1px solid rgba(255,255,255,0.25)',
+                  border: '1px solid rgba(255,255,255,0.22)',
                   borderRadius: '8px',
                   fontWeight: 600,
                   fontSize: '14px',
@@ -854,7 +735,7 @@ export default function LandingPage() {
                   e.currentTarget.style.color = '#fff'
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'
                   e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
                 }}
               >
@@ -866,11 +747,9 @@ export default function LandingPage() {
       </main>
 
       {/* ─────────────────────── FOOTER ─────────────────────── */}
-      <footer style={{
-        borderTop: '1px solid var(--border)',
-        background: 'var(--bg-page)',
-      }}>
-        <div className="container-max" style={{ padding: '56px clamp(20px, 5vw, 60px)' }}>
+      <footer style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+        <div className="container-max" style={{ padding: 'clamp(40px, 6vw, 64px) clamp(20px, 5vw, 60px)' }}>
+
           {/* Top row */}
           <div style={{
             display: 'flex',
@@ -882,12 +761,11 @@ export default function LandingPage() {
           }}>
             {/* Brand */}
             <div style={{ maxWidth: '280px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.04em' }}>Blog</span>
-                <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--accent)' }}>Space</span>
+              <div style={{ marginBottom: '12px' }}>
+                <BlogramLogo size={18} />
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                A modern publishing platform for curious thinkers and serious writers.
+                A modern, AI-powered publishing platform for curious thinkers and serious writers.
               </p>
             </div>
 
@@ -946,13 +824,13 @@ export default function LandingPage() {
             </div>
 
             {/* Social icons */}
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
               {[
                 {
                   label: 'Twitter',
                   href: '#',
                   svg: (
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
                     </svg>
                   ),
@@ -961,7 +839,7 @@ export default function LandingPage() {
                   label: 'GitHub',
                   href: '#',
                   svg: (
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
                     </svg>
                   ),
@@ -970,7 +848,7 @@ export default function LandingPage() {
                   label: 'RSS',
                   href: '#',
                   svg: (
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M4 11a9 9 0 0 1 9 9" />
                       <path d="M4 4a16 16 0 0 1 16 16" />
                       <circle cx="5" cy="19" r="1" fill="currentColor" />
@@ -986,8 +864,8 @@ export default function LandingPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: '38px',
-                    height: '38px',
+                    width: '36px',
+                    height: '36px',
                     borderRadius: '8px',
                     border: '1px solid var(--border)',
                     color: 'var(--text-secondary)',
@@ -1022,7 +900,7 @@ export default function LandingPage() {
             flexWrap: 'wrap',
           }}>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              © {new Date().getFullYear()} BlogSpace. All rights reserved.
+              © {new Date().getFullYear()} Blogram. All rights reserved.
             </p>
             <div style={{ display: 'flex', gap: '24px' }}>
               {['Terms', 'Privacy', 'Cookies'].map(item => (
@@ -1046,10 +924,18 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* ─────────────────────── MOBILE NAV HIDE STYLE ─────────────────────── */}
+      {/* ─────────────────────── RESPONSIVE HELPERS ─────────────────────── */}
       <style jsx global>{`
         @media (max-width: 640px) {
           .hidden-mobile { display: none !important; }
+        }
+        @media (max-width: 720px) {
+          .ai-feat-row {
+            grid-template-columns: 1fr !important;
+          }
+          .ai-feat-row > div:last-child {
+            display: none !important;
+          }
         }
       `}</style>
     </div>

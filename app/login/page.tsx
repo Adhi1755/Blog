@@ -169,8 +169,8 @@ export default function LoginPage() {
         {/* Top-left logo */}
         <div style={{ position: 'relative', zIndex: 2, padding: '40px 48px 0' }}>
           <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline', gap: '2px' }}>
-            <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.04em', color: '#fff' }}>Blog</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--accent)' }}>Space</span>
+            <span style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--accent)' }}>BLOG</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.05em', color: '#fff' }}>RAM</span>
           </Link>
         </div>
 
@@ -292,8 +292,8 @@ export default function LoginPage() {
           {/* Mobile-only logo */}
           <div className="auth-mobile-logo" style={{ marginBottom: '32px' }}>
             <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline', gap: '2px' }}>
-              <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--text-primary)' }}>Blog</span>
-              <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--accent)' }}>Space</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--accent)' }}>BLOG</span>
+              <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.05em', color: 'var(--text-primary)' }}>RAM</span>
             </Link>
           </div>
 

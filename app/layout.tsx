@@ -11,13 +11,13 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'BlogSpace — Thoughts, Stories & Ideas',
+  title: 'Blogram — Write. Discover. Think.',
   description:
-    'A modern editorial platform to publish, discover, and share in-depth articles, tutorials, and perspectives on technology, design, AI, and business.',
+    'Blogram is an AI-powered publishing platform for curious thinkers and serious writers. Auto-classification, smart summaries, and a beautiful Markdown editor.',
   openGraph: {
-    title: 'BlogSpace — Thoughts, Stories & Ideas',
+    title: 'Blogram — Write. Discover. Think.',
     description:
-      'A modern editorial platform to publish, discover, and share in-depth articles.',
+      'An AI-powered publishing platform for curious thinkers and serious writers.',
     type: 'website',
   },
 }
