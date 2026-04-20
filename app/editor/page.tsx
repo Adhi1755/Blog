@@ -7,104 +7,107 @@ import { useAuth } from '../context/AuthContext'
 import { usePosts, CATEGORY_OPTIONS, type DraftPost } from '../hooks/usePosts'
 import AppHeader from '../components/AppHeader'
 
+const C = {
+  bg:      '#F7F7F7',
+  surface: '#FFFFFF',
+  dark:    '#111111',
+  muted:   '#6B6B6B',
+  accent:  '#FF6A00',
+  accentD: 'rgba(255,106,0,0.09)',
+  border:  '#DCDCDC',
+  error:   '#D93025',
+}
+
+const inputStyle = (hasError?: boolean): React.CSSProperties => ({
+  width: '100%',
+  padding: '10px 14px',
+  fontSize: 13,
+  color: C.dark,
+  background: hasError ? '#fff5f5' : C.surface,
+  border: `1.5px solid ${hasError ? C.error : C.border}`,
+  borderRadius: 8,
+  outline: 'none',
+  fontFamily: 'inherit',
+  transition: 'border-color .18s, background .18s',
+  boxSizing: 'border-box' as const,
+})
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 10, fontWeight: 700, letterSpacing: '0.14em',
+  textTransform: 'uppercase', color: C.muted,
+  display: 'block', marginBottom: 8,
+}
+
+function SideCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 20 }}>
+      <p style={{ ...labelStyle, marginBottom: 14, color: C.muted }}>{title}</p>
+      {children}
+    </div>
+  )
+}
+
 function EditorContent() {
-  const router = useRouter()
+  const router      = useRouter()
   const searchParams = useSearchParams()
-  const editSlug = searchParams.get('edit')
+  const editSlug    = searchParams.get('edit')
   const { user, loading: authLoading } = useAuth()
   const { posts, addPost, updatePost, hydrated } = usePosts()
 
-  const [title, setTitle] = useState('')
-  const [excerpt, setExcerpt] = useState('')
-  const [content, setContent] = useState('')
-  const [category, setCategory] = useState('Next.js')
+  const [title, setTitle]           = useState('')
+  const [excerpt, setExcerpt]       = useState('')
+  const [content, setContent]       = useState('')
+  const [category, setCategory]     = useState('Next.js')
   const [categoryColor, setCategoryColor] = useState('violet')
-  const [thumbnail, setThumbnail] = useState('')
-  const [tagsInput, setTagsInput] = useState('')
-  const [featured, setFeatured] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const titleRef = useRef<HTMLInputElement>(null)
+  const [thumbnail, setThumbnail]   = useState('')
+  const [tagsInput, setTagsInput]   = useState('')
+  const [featured, setFeatured]     = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [saved, setSaved]           = useState(false)
+  const [errors, setErrors]         = useState<Record<string, string>>({})
+  const titleRef   = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
 
   function insertFormatting(type: string) {
     if (!contentRef.current) return
-    const textarea = contentRef.current
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selected = content.slice(start, end)
-    
-    let before = ''
-    let after = ''
-    
+    const ta = contentRef.current
+    const start = ta.selectionStart, end = ta.selectionEnd
+    const sel = content.slice(start, end)
+    let before = '', after = ''
     switch (type) {
-      case 'Heading':
-        before = '### '
-        break
-      case 'Bold':
-        before = '**'
-        after = '**'
-        break
-      case 'Italic':
-        before = '_'
-        after = '_'
-        break
-      case 'List':
-        before = '- '
-        break
-      case 'Code':
-        before = '`'
-        after = '`'
-        break
-      case 'Link':
-        before = '['
-        after = '](https://)'
-        break
+      case 'Heading': before = '### '; break
+      case 'Bold':    before = '**'; after = '**'; break
+      case 'Italic':  before = '_';  after = '_';  break
+      case 'List':    before = '- '; break
+      case 'Code':    before = '`';  after = '`';  break
+      case 'Link':    before = '[';  after = '](https://)'; break
     }
-
-    const newText = content.slice(0, start) + before + selected + after + content.slice(end)
+    const newText = content.slice(0, start) + before + sel + after + content.slice(end)
     setContent(newText)
-    
-    // reset focus and selection
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + before.length, start + before.length + selected.length)
-    }, 0)
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + before.length, start + before.length + sel.length) }, 0)
   }
 
-  // Auth guard
-  useEffect(() => {
-    if (!authLoading && !user) router.replace('/login')
-  }, [authLoading, user, router])
-
-  // Populate form for edit mode
+  useEffect(() => { if (!authLoading && !user) router.replace('/login') }, [authLoading, user, router])
   useEffect(() => {
     if (!editSlug || !hydrated) return
-    const post = posts.find((p) => p.slug === editSlug)
+    const post = posts.find(p => p.slug === editSlug)
     if (!post) return
     /* eslint-disable react-hooks/set-state-in-effect */
-    setTitle(post.title)
-    setExcerpt(post.excerpt)
-    setContent(post.body?.map((b) => ('text' in b ? b.text : '')).join('\n\n') ?? '')
-    setCategory(post.category)
-    setCategoryColor(post.categoryColor)
-    setThumbnail(post.thumbnail ?? '')
-    setTagsInput((post.tags ?? []).join(', '))
+    setTitle(post.title); setExcerpt(post.excerpt)
+    setContent(post.body?.map(b => ('text' in b ? b.text : '')).join('\n\n') ?? '')
+    setCategory(post.category); setCategoryColor(post.categoryColor)
+    setThumbnail(post.thumbnail ?? ''); setTagsInput((post.tags ?? []).join(', '))
     setFeatured(post.featured ?? false)
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [editSlug, hydrated, posts])
-
-  useEffect(() => {
-    titleRef.current?.focus()
-  }, [])
+  useEffect(() => { titleRef.current?.focus() }, [])
 
   function validate(): boolean {
     const e: Record<string, string> = {}
     if (!title.trim()) e.title = 'Title is required'
-    else if (title.trim().length < 5) e.title = 'Title must be at least 5 characters'
+    else if (title.trim().length < 5) e.title = 'At least 5 characters'
     if (!excerpt.trim()) e.excerpt = 'Summary is required'
-    else if (excerpt.trim().length < 20) e.excerpt = 'Summary must be at least 20 characters'
+    else if (excerpt.trim().length < 20) e.excerpt = 'At least 20 characters'
     if (!content.trim()) e.content = 'Content is required'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -114,55 +117,22 @@ function EditorContent() {
     e.preventDefault()
     if (!validate()) return
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 400))
-
-    const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean)
-    const draft: DraftPost = {
-      title,
-      excerpt,
-      content,
-      category,
-      categoryColor,
-      authorName: user?.name ?? 'Anonymous',
-      featured,
-      thumbnail: thumbnail || undefined,
-      tags,
-    }
-
-    if (editSlug) {
-      updatePost(editSlug, draft)
-      setSaving(false)
-      setSaved(true)
-      setTimeout(() => router.push(`/blog/${editSlug}`), 800)
-    } else {
-      const post = addPost(draft)
-      setSaving(false)
-      setSaved(true)
-      setTimeout(() => router.push(`/blog/${post.slug}`), 800)
-    }
+    await new Promise(r => setTimeout(r, 400))
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
+    const draft: DraftPost = { title, excerpt, content, category, categoryColor, authorName: user?.name ?? 'Anonymous', featured, thumbnail: thumbnail || undefined, tags }
+    if (editSlug) { updatePost(editSlug, draft); setSaving(false); setSaved(true); setTimeout(() => router.push(`/blog/${editSlug}`), 800) }
+    else { const post = addPost(draft); setSaving(false); setSaved(true); setTimeout(() => router.push(`/blog/${post.slug}`), 800) }
   }
 
   async function handleSaveDraft(e: FormEvent) {
     e.preventDefault()
     if (!title.trim()) { setErrors({ title: 'Title is required to save a draft' }); return }
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 400))
-    const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean)
-    const draft: DraftPost = {
-      title,
-      excerpt: excerpt || 'Draft — no summary yet.',
-      content,
-      category,
-      categoryColor,
-      authorName: user?.name ?? 'Anonymous',
-      featured,
-      thumbnail: thumbnail || undefined,
-      tags,
-    }
+    await new Promise(r => setTimeout(r, 400))
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
+    const draft: DraftPost = { title, excerpt: excerpt || 'Draft — no summary yet.', content, category, categoryColor, authorName: user?.name ?? 'Anonymous', featured, thumbnail: thumbnail || undefined, tags }
     if (!editSlug) addPost(draft)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
 
   if (authLoading || !user) return null
@@ -170,241 +140,251 @@ function EditorContent() {
   const isEdit = !!editSlug
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Shared app header */}
+    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans','Helvetica Neue',sans-serif" }}>
       <AppHeader />
 
-      {/* Editor sub-bar: context + publish actions */}
-      <div className="shrink-0 border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-2.5">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="text-xs font-medium text-neutral-400 hover:text-black transition-colors flex items-center gap-1"
-            >
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+      {/* Sub-bar */}
+      <div style={{ position: 'sticky', top: 56, zIndex: 40, background: 'rgba(247,247,247,0.95)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px,3vw,40px)', height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: C.muted, textDecoration: 'none', transition: 'color .18s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+              onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
               </svg>
-              Back to Feed
+              Feed
             </Link>
-            <span className="text-neutral-200">|</span>
-            <span className="text-xs font-semibold text-black">
+            <span style={{ width: 1, height: 14, background: C.border }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.dark, letterSpacing: '0.06em' }}>
               {isEdit ? 'Edit Post' : 'New Post'}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {saved && (
-              <span className="flex items-center gap-1.5 text-xs font-medium text-neutral-500">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#2E8B57', fontWeight: 600 }}>
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 13l4 4L19 7" />
                 </svg>
                 Saved
               </span>
             )}
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={saving}
-              className="border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-600 transition-all hover:border-neutral-400 hover:bg-neutral-50 disabled:opacity-50"
-            >
+            <button type="button" onClick={handleSaveDraft} disabled={saving}
+              style={{ border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: C.muted, background: 'transparent', cursor: saving ? 'not-allowed' : 'pointer', transition: 'border-color .18s, color .18s', fontFamily: 'inherit', opacity: saving ? 0.5 : 1 }}
+              onMouseEnter={e => { if (!saving) { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark } }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}>
               Save Draft
             </button>
-            <button
-              type="submit"
-              form="editor-form"
-              disabled={saving}
-              className="border border-black bg-black px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
-            >
-              {saving ? 'Publishing…' : isEdit ? 'Update' : 'Publish'}
+            <button type="submit" form="editor-form" disabled={saving}
+              style={{ border: 'none', borderRadius: 7, padding: '6px 18px', fontSize: 11, fontWeight: 700, color: '#fff', background: saving ? '#555' : C.dark, cursor: saving ? 'not-allowed' : 'pointer', transition: 'background .18s, transform .15s', fontFamily: 'inherit', opacity: saving ? 0.7 : 1 }}
+              onMouseEnter={e => { if (!saving) { e.currentTarget.style.background = '#2a2a2a'; e.currentTarget.style.transform = 'translateY(-1px)' } }}
+              onMouseLeave={e => { if (!saving) { e.currentTarget.style.background = C.dark; e.currentTarget.style.transform = 'none' } }}>
+              {saving ? 'Publishing…' : isEdit ? 'Update Post' : 'Publish'}
             </button>
           </div>
         </div>
       </div>
 
       <form id="editor-form" onSubmit={handlePublish} noValidate>
-        <div className="mx-auto max-w-5xl px-6 py-10">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(24px,4vw,40px) clamp(16px,3vw,40px)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 24 }} className="editor-layout">
 
-            {/* Main editor */}
-            <div className="flex flex-col gap-6 lg:col-span-2">
+            {/* ── Main editor column ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
               {/* Title */}
-              <div className="flex flex-col gap-1.5">
+              <div style={{ background: C.surface, border: `1px solid ${errors.title ? C.error : C.border}`, borderRadius: 10, padding: '4px 20px 20px', transition: 'border-color .18s' }}>
                 <input
                   id="editor-title"
                   ref={titleRef}
                   type="text"
                   value={title}
-                  onChange={(e) => { setTitle(e.target.value); setErrors((prev) => ({ ...prev, title: '' })) }}
+                  onChange={e => { setTitle(e.target.value); setErrors(prev => ({ ...prev, title: '' })) }}
                   placeholder="Post title…"
-                  className="w-full border-0 border-b border-neutral-200 bg-transparent py-3 text-3xl font-black text-black placeholder-neutral-300 outline-none transition-colors focus:border-black"
+                  style={{
+                    width: '100%', border: 'none', background: 'transparent', outline: 'none',
+                    fontSize: 'clamp(22px,3.5vw,34px)', fontWeight: 800, letterSpacing: '-0.03em',
+                    color: C.dark, paddingTop: 20, paddingBottom: 4,
+                    fontFamily: 'inherit', caretColor: C.accent,
+                    boxSizing: 'border-box',
+                  }}
                 />
-                {errors.title && <p className="text-xs font-medium text-black">{errors.title}</p>}
+                {errors.title && <p style={{ fontSize: 11, color: C.error, fontWeight: 500, marginTop: 4 }}>{errors.title}</p>}
               </div>
 
               {/* Summary */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="editor-excerpt" className="text-xs font-bold uppercase tracking-widest text-neutral-400">Summary</label>
+              <div>
+                <label htmlFor="editor-excerpt" style={labelStyle}>Summary</label>
                 <textarea
-                  id="editor-excerpt"
-                  rows={3}
-                  value={excerpt}
-                  onChange={(e) => { setExcerpt(e.target.value); setErrors((prev) => ({ ...prev, excerpt: '' })) }}
-                  placeholder="A concise summary that appears on blog cards and search results…"
-                  className="w-full resize-y border border-neutral-200 bg-white px-4 py-3 text-sm text-black placeholder-neutral-400 outline-none transition-colors focus:border-black"
+                  id="editor-excerpt" rows={3} value={excerpt}
+                  onChange={e => { setExcerpt(e.target.value); setErrors(prev => ({ ...prev, excerpt: '' })) }}
+                  placeholder="A brief summary that appears on blog cards and search results…"
+                  style={{ ...inputStyle(!!errors.excerpt), resize: 'vertical', lineHeight: 1.7 }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.dark }}
+                  onBlur={e => { e.currentTarget.style.borderColor = errors.excerpt ? C.error : C.border }}
                 />
-                {errors.excerpt && <p className="text-xs font-medium text-black">{errors.excerpt}</p>}
+                {errors.excerpt && <p style={{ fontSize: 11, color: C.error, fontWeight: 500, marginTop: 5 }}>{errors.excerpt}</p>}
               </div>
 
               {/* Content */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="editor-content" className="text-xs font-bold uppercase tracking-widest text-neutral-400">Content</label>
-                  <span className="text-xs text-neutral-400">{content.length} chars</span>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <label htmlFor="editor-content" style={{ ...labelStyle, marginBottom: 0 }}>Content</label>
+                  <span style={{ fontSize: 11, color: C.muted }}>{content.length} chars</span>
                 </div>
-                {/* Toolbar buttons */}
-                <div className="flex gap-2 border border-b-0 border-neutral-200 bg-neutral-50 px-3 py-2">
-                  {['Heading', 'Bold', 'Italic', 'List', 'Code', 'Link'].map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault()
-                        insertFormatting(t)
+                {/* Toolbar */}
+                <div style={{ display: 'flex', gap: 6, background: C.bg, border: `1.5px solid ${C.border}`, borderBottom: 'none', borderRadius: '8px 8px 0 0', padding: '8px 12px', flexWrap: 'wrap' }}>
+                  {['Heading', 'Bold', 'Italic', 'List', 'Code', 'Link'].map(t => (
+                    <button key={t} type="button"
+                      onMouseDown={e => { e.preventDefault(); insertFormatting(t) }}
+                      style={{
+                        fontSize: 11, fontWeight: 600, color: C.muted,
+                        border: `1px solid ${C.border}`, borderRadius: 5,
+                        padding: '3px 10px', background: C.surface,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        transition: 'border-color .15s, color .15s',
                       }}
-                      className="text-xs text-neutral-600 font-medium border border-neutral-200 px-2 py-0.5 bg-white hover:border-black hover:text-black transition-colors"
-                    >
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}>
                       {t}
                     </button>
                   ))}
                 </div>
                 <textarea
-                  id="editor-content"
-                  ref={contentRef}
-                  rows={18}
-                  value={content}
-                  onChange={(e) => { setContent(e.target.value); setErrors((prev) => ({ ...prev, content: '' })) }}
-                  placeholder="Write your full post content here. Use Markdown-style formatting — # for headings, **bold**, `code`, - for lists…"
-                  className="w-full resize-y border border-neutral-200 bg-white px-4 py-4 text-sm leading-7 text-black placeholder-neutral-400 outline-none transition-colors focus:border-black font-mono"
+                  id="editor-content" ref={contentRef} rows={20} value={content}
+                  onChange={e => { setContent(e.target.value); setErrors(prev => ({ ...prev, content: '' })) }}
+                  placeholder="Write your full post here. Use Markdown-style formatting — ### for headings, **bold**, `code`, - for lists…"
+                  style={{
+                    ...inputStyle(!!errors.content),
+                    borderRadius: '0 0 8px 8px',
+                    resize: 'vertical', lineHeight: 1.8,
+                    fontFamily: "'Fira Code', 'Courier New', monospace",
+                    fontSize: 13,
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.dark }}
+                  onBlur={e => { e.currentTarget.style.borderColor = errors.content ? C.error : C.border }}
                 />
-                {errors.content && <p className="text-xs font-medium text-black">{errors.content}</p>}
+                {errors.content && <p style={{ fontSize: 11, color: C.error, fontWeight: 500, marginTop: 5 }}>{errors.content}</p>}
               </div>
             </div>
 
-            {/* Sidebar settings */}
-            <div className="flex flex-col gap-5">
+            {/* ── Sidebar ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-              {/* Publish box */}
-              <div className="border border-neutral-200 p-5">
-                <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Publish Settings</h3>
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-black">Author</span>
-                    <span className="text-sm text-neutral-500">{user.name}</span>
+              {/* Publish settings */}
+              <SideCard title="Publish Settings">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: C.dark }}>Author</span>
+                    <span style={{ fontSize: 12, color: C.muted }}>{user.name}</span>
                   </div>
-                  <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
+                  <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <p className="text-sm font-semibold text-black">Featured</p>
-                      <p className="text-xs text-neutral-400">Show on homepage hero</p>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: C.dark, marginBottom: 2 }}>Featured</p>
+                      <p style={{ fontSize: 11, color: C.muted }}>Highlight on homepage</p>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={featured}
-                      onClick={() => setFeatured((f) => !f)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer border-2 border-transparent transition-colors duration-200 ${featured ? 'bg-black' : 'bg-neutral-200'}`}
-                    >
-                      <span className={`inline-block h-5 w-5 bg-white shadow-sm transition-transform duration-200 ${featured ? 'translate-x-5' : 'translate-x-0'}`} />
+                    <button type="button" role="switch" aria-checked={featured} onClick={() => setFeatured(f => !f)}
+                      style={{
+                        position: 'relative', width: 42, height: 24, borderRadius: 100,
+                        background: featured ? C.dark : C.border, border: 'none',
+                        cursor: 'pointer', transition: 'background .2s', flexShrink: 0,
+                      }}>
+                      <span style={{
+                        position: 'absolute', top: 3, left: featured ? 21 : 3,
+                        width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                        transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        display: 'block',
+                      }} />
                     </button>
                   </div>
                 </div>
-              </div>
+              </SideCard>
 
               {/* Category */}
-              <div className="border border-neutral-200 p-5">
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-neutral-400">Category</h3>
+              <SideCard title="Category">
                 <select
-                  id="editor-category"
-                  value={category}
-                  onChange={(e) => {
-                    const found = CATEGORY_OPTIONS.find((c) => c.label === e.target.value)
-                    setCategory(e.target.value)
-                    setCategoryColor(found?.color ?? 'violet')
-                  }}
-                  className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm text-black outline-none focus:border-black"
-                >
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c.label} value={c.label}>{c.label}</option>
-                  ))}
+                  id="editor-category" value={category}
+                  onChange={e => { const f = CATEGORY_OPTIONS.find(c => c.label === e.target.value); setCategory(e.target.value); setCategoryColor(f?.color ?? 'violet') }}
+                  style={{ ...inputStyle(), appearance: 'none', paddingRight: 32, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' viewBox='0 0 24 24' stroke='%236B6B6B' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = C.dark)}
+                  onBlur={e => (e.currentTarget.style.borderColor = C.border)}>
+                  {CATEGORY_OPTIONS.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
                 </select>
-              </div>
+              </SideCard>
 
               {/* Thumbnail */}
-              <div className="border border-neutral-200 p-5">
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-neutral-400">Thumbnail URL</h3>
+              <SideCard title="Thumbnail URL">
                 <input
-                  id="editor-thumbnail"
-                  type="url"
-                  value={thumbnail}
-                  onChange={(e) => setThumbnail(e.target.value)}
+                  id="editor-thumbnail" type="url" value={thumbnail}
+                  onChange={e => setThumbnail(e.target.value)}
                   placeholder="https://example.com/image.jpg"
-                  className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm text-black placeholder-neutral-400 outline-none focus:border-black"
+                  style={inputStyle()}
+                  onFocus={e => (e.currentTarget.style.borderColor = C.dark)}
+                  onBlur={e => (e.currentTarget.style.borderColor = C.border)}
                 />
                 {thumbnail && (
-                  <div className="mt-3 overflow-hidden border border-neutral-100">
+                  <div style={{ marginTop: 10, borderRadius: 7, overflow: 'hidden', border: `1px solid ${C.border}` }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={thumbnail} alt="Thumbnail preview" className="h-28 w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    <img src={thumbnail} alt="Preview" style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }}
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
                   </div>
                 )}
-              </div>
+              </SideCard>
 
               {/* Tags */}
-              <div className="border border-neutral-200 p-5">
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-neutral-400">Tags</h3>
+              <SideCard title="Tags">
                 <input
-                  id="editor-tags"
-                  type="text"
-                  value={tagsInput}
-                  onChange={(e) => setTagsInput(e.target.value)}
-                  placeholder="React, TypeScript, Performance"
-                  className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm text-black placeholder-neutral-400 outline-none focus:border-black"
+                  id="editor-tags" type="text" value={tagsInput}
+                  onChange={e => setTagsInput(e.target.value)}
+                  placeholder="React, TypeScript, UX"
+                  style={inputStyle()}
+                  onFocus={e => (e.currentTarget.style.borderColor = C.dark)}
+                  onBlur={e => (e.currentTarget.style.borderColor = C.border)}
                 />
-                <p className="mt-1.5 text-xs text-neutral-400">Comma-separated</p>
-                {/* Tag preview */}
+                <p style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>Comma-separated</p>
                 {tagsInput && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {tagsInput.split(',').map((t) => t.trim()).filter(Boolean).map((tag) => (
-                      <span key={tag} className="border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-xs text-neutral-500">
+                  <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {tagsInput.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                      <span key={tag} style={{ fontSize: 11, fontWeight: 500, color: C.accent, background: C.accentD, padding: '3px 9px', borderRadius: 100 }}>
                         {tag}
                       </span>
                     ))}
                   </div>
                 )}
-              </div>
+              </SideCard>
 
-              {/* Danger zone (edit mode) */}
+              {/* Cancel (edit mode) */}
               {isEdit && (
-                <div className="border border-neutral-200 p-5">
-                  <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-neutral-400">Danger Zone</h3>
-                  <Link
-                    href="/dashboard"
-                    className="block w-full border border-neutral-200 py-2.5 text-center text-sm font-semibold text-neutral-500 transition-all hover:border-neutral-400 hover:text-black"
-                  >
-                    Cancel & Go Back
+                <SideCard title="Danger Zone">
+                  <Link href="/dashboard" style={{
+                    display: 'block', textAlign: 'center', border: `1.5px solid ${C.border}`,
+                    borderRadius: 8, padding: '10px', fontSize: 12, fontWeight: 600,
+                    color: C.muted, textDecoration: 'none',
+                    transition: 'border-color .18s, color .18s',
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}>
+                    Cancel &amp; Go Back
                   </Link>
-                </div>
+                </SideCard>
               )}
             </div>
           </div>
         </div>
       </form>
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .editor-layout { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   )
 }
 
 export default function EditorPage() {
   return (
-    <Suspense fallback={<div className="bg-white min-h-screen" />}>
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#F7F7F7' }} />}>
       <EditorContent />
     </Suspense>
   )

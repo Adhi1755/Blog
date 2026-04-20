@@ -5,88 +5,117 @@ import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../context/AuthContext'
 
-type FormState = { name: string; email: string; password: string; confirmPassword: string }
+/* ── Brand tokens ── */
+const C = {
+  bg:      '#F7F7F7',
+  surface: '#FFFFFF',
+  dark:    '#111111',
+  muted:   '#6B6B6B',
+  accent:  '#FF6A00',
+  border:  '#DCDCDC',
+  error:   '#D93025',
+  ok:      '#1a8a1a',
+}
+
+type FormState  = { name: string; email: string; password: string; confirmPassword: string }
 type FieldError = Partial<FormState>
 
-function getStrength(pw: string): { score: number; label: string } {
-  if (!pw) return { score: 0, label: '' }
+function getStrength(pw: string): { score: number; label: string; color: string } {
+  if (!pw) return { score: 0, label: '', color: '' }
   let s = 0
   if (pw.length >= 8) s++
   if (/[A-Z]/.test(pw)) s++
   if (/[0-9]/.test(pw)) s++
   if (/[^A-Za-z0-9]/.test(pw)) s++
   const map = [
-    { score: 1, label: 'Weak' },
-    { score: 2, label: 'Fair' },
-    { score: 3, label: 'Good' },
-    { score: 4, label: 'Strong' },
+    { score: 1, label: 'Weak',   color: '#D93025' },
+    { score: 2, label: 'Fair',   color: '#E67E22' },
+    { score: 3, label: 'Good',   color: '#2E8B57' },
+    { score: 4, label: 'Strong', color: '#1a8a1a' },
   ]
-  return map[s - 1] ?? { score: 0, label: '' }
+  return map[s - 1] ?? { score: 0, label: '', color: '' }
 }
 
 function validate(v: FormState): FieldError {
   const e: FieldError = {}
   if (!v.name.trim()) e.name = 'Full name is required'
-  else if (v.name.trim().length < 2) e.name = 'Name must be at least 2 characters'
+  else if (v.name.trim().length < 2) e.name = 'At least 2 characters'
   if (!v.email) e.email = 'Email is required'
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) e.email = 'Enter a valid email address'
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) e.email = 'Enter a valid email'
   if (!v.password) e.password = 'Password is required'
-  else if (v.password.length < 8) e.password = 'Password must be at least 8 characters'
-  else if (getStrength(v.password).score < 2) e.password = 'Password is too weak — add uppercase letters or numbers'
+  else if (v.password.length < 8) e.password = 'At least 8 characters'
+  else if (getStrength(v.password).score < 2) e.password = 'Too weak — add uppercase or numbers'
   if (!v.confirmPassword) e.confirmPassword = 'Please confirm your password'
   else if (v.confirmPassword !== v.password) e.confirmPassword = 'Passwords do not match'
   return e
 }
 
-function EyeOpen() {
+/* ── Tiny icons ── */
+function UserIcon() {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    </svg>
+  )
+}
+function MailIcon() {
+  return (
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+    </svg>
+  )
+}
+function LockIcon() {
+  return (
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+    </svg>
+  )
+}
+function EyeIcon({ off }: { off?: boolean }) {
+  return off ? (
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+    </svg>
+  ) : (
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+      <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  )
+}
+function CheckSmall() {
+  return (
+    <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 13l4 4L19 7" />
     </svg>
   )
 }
 
-function EyeClosed() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-    </svg>
-  )
-}
-
-function Label({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
-  return <label htmlFor={htmlFor} className="text-sm font-semibold text-black">{children}</label>
-}
-
-function ErrorMsg({ id, msg }: { id?: string; msg: string }) {
-  return (
-    <p id={id} role="alert" className="flex items-center gap-1.5 text-xs text-black font-medium">
-      <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-      </svg>
-      {msg}
-    </p>
-  )
-}
+const FEATURES = [
+  'Publish unlimited articles',
+  'Rich Markdown editor',
+  'AI-powered categorisation',
+  'Smart reading feed',
+]
 
 export default function RegisterPage() {
   const router = useRouter()
   const { register } = useAuth()
-  const [values, setValues] = useState<FormState>({ name: '', email: '', password: '', confirmPassword: '' })
-  const [errors, setErrors] = useState<FieldError>({})
-  const [serverError, setServerError] = useState('')
+  const [values, setValues]             = useState<FormState>({ name: '', email: '', password: '', confirmPassword: '' })
+  const [errors, setErrors]             = useState<FieldError>({})
+  const [serverError, setServerError]   = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [agreed, setAgreed] = useState(false)
-  const [agreeError, setAgreeError] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [showConfirm, setShowConfirm]   = useState(false)
+  const [agreed, setAgreed]             = useState(false)
+  const [agreeError, setAgreeError]     = useState(false)
+  const [loading, setLoading]           = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target
-    setValues((prev) => ({ ...prev, [name]: value }))
+    setValues(prev => ({ ...prev, [name]: value }))
     setServerError('')
-    if (errors[name as keyof FieldError]) setErrors((prev) => ({ ...prev, [name]: undefined }))
+    if (errors[name as keyof FieldError]) setErrors(prev => ({ ...prev, [name]: undefined }))
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -103,209 +132,421 @@ export default function RegisterPage() {
   }
 
   const strength = getStrength(values.password)
-  const inputBase = "w-full border bg-white py-3 pl-10 pr-4 text-sm text-black placeholder-neutral-400 outline-none transition-all duration-150"
-  const inputNormal = "border-neutral-200 focus:border-black"
-  const inputError = "border-neutral-400 focus:border-black"
-  const inputOk = "border-neutral-300 focus:border-black"
 
-  const strengthColors = ['bg-neutral-200', 'bg-neutral-400', 'bg-neutral-600', 'bg-black']
+  const inputBase: React.CSSProperties = {
+    width: '100%',
+    paddingTop: '10px',
+    paddingBottom: '10px',
+    paddingLeft: '38px',
+    paddingRight: '14px',
+    fontSize: '13px',
+    color: C.dark,
+    background: C.bg,
+    border: `1.5px solid ${C.border}`,
+    borderRadius: '8px',
+    outline: 'none',
+    fontFamily: 'inherit',
+    transition: 'border-color .18s, background .18s',
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-16 bg-white">
-      <div className="w-full max-w-md flex flex-col gap-6">
-        {/* Back Button */}
-        <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-black transition-colors self-start">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-          </svg>
-          Back to Home
-        </Link>
+    <div style={{
+      minHeight: '100vh',
+      background: C.bg,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+      fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
+    }}>
 
-        {/* Card */}
-        <div className="border border-neutral-200 bg-white p-8 sm:p-10">
+      {/* Back link */}
+      <Link href="/" style={{
+        position: 'fixed', top: 24, left: 28,
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 12, fontWeight: 600, color: C.muted, textDecoration: 'none',
+        transition: 'color .18s', zIndex: 10,
+      }}
+        onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+        onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Home
+      </Link>
+
+      {/* Centered card */}
+      <div style={{
+        width: '100%',
+        maxWidth: 880,
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        borderRadius: 18,
+        overflow: 'hidden',
+        boxShadow: '0 24px 80px -8px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06)',
+      }} className="auth-card">
+
+        {/* ── LEFT — dark panel ── */}
+        <div style={{
+          background: C.dark,
+          padding: 'clamp(36px,5vw,52px)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: 560,
+        }}>
+          {/* Grid texture */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
+            backgroundSize: '36px 36px',
+            pointerEvents: 'none',
+          }} />
+          {/* Orange glow */}
+          <div style={{
+            position: 'absolute', bottom: -80, right: -80,
+            width: 280, height: 280,
+            background: `radial-gradient(circle, rgba(255,106,0,0.2) 0%, transparent 70%)`,
+            pointerEvents: 'none',
+          }} />
+          {/* Top-left glow */}
+          <div style={{
+            position: 'absolute', top: -60, left: -60,
+            width: 200, height: 200,
+            background: `radial-gradient(circle, rgba(255,106,0,0.08) 0%, transparent 70%)`,
+            pointerEvents: 'none',
+          }} />
 
           {/* Logo */}
-          <Link href="/" className="mb-8 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center border border-black bg-black text-xs font-black text-white">B</span>
-            <span className="text-sm font-bold text-black">BlogSpace</span>
-          </Link>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.04em', color: C.accent }}>BLOG</span>
+              <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.05em', color: '#fff' }}>RAM</span>
+            </Link>
+          </div>
 
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-black tracking-tight text-black">Create an account</h1>
-            <p className="mt-1.5 text-sm text-neutral-500">
-              Already have one?{' '}
-              <Link href="/login" className="font-semibold text-black underline underline-offset-2 transition-colors hover:text-neutral-600">
-                Sign in instead
+          {/* Main copy */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 14 }}>
+              Join the community
+            </p>
+            <h1 style={{
+              fontSize: 'clamp(24px,3vw,34px)', fontWeight: 800,
+              lineHeight: 1.1, letterSpacing: '-0.04em', color: '#fff', marginBottom: 14,
+            }}>
+              Start writing<br />
+              <span style={{ color: 'rgba(255,255,255,0.35)' }}>your story today.</span>
+            </h1>
+            <p style={{ fontSize: 13, lineHeight: 1.75, color: 'rgba(255,255,255,0.48)', maxWidth: 280, marginBottom: 28 }}>
+              Join thousands of writers on a platform built for serious ideas and beautiful writing.
+            </p>
+
+            {/* Feature list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {FEATURES.map(f => (
+                <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                  <span style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: 'rgba(255,106,0,0.2)',
+                    color: C.accent, flexShrink: 0,
+                  }}>
+                    <CheckSmall />
+                  </span>
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Testimonial */}
+          <div style={{
+            position: 'relative', zIndex: 1,
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 10, padding: '16px 20px',
+          }}>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7, fontStyle: 'italic', marginBottom: 10 }}>
+              &ldquo;Blogram transformed how I share insights. My readership grew 4× in 3 months.&rdquo;
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: C.accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 800, color: '#fff',
+              }}>J</div>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>James Park</p>
+                <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Senior Engineer · 340+ followers</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── RIGHT — form panel ── */}
+        <div style={{
+          background: C.surface,
+          padding: 'clamp(36px,5vw,52px)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          overflowY: 'auto',
+        }}>
+
+          {/* Heading */}
+          <div style={{ marginBottom: 24 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 10 }}>
+              Create Account
+            </p>
+            <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.03em', color: C.dark, marginBottom: 8 }}>
+              Start your journey
+            </h2>
+            <p style={{ fontSize: 13, color: C.muted }}>
+              Already have an account?{' '}
+              <Link href="/login" style={{ color: C.accent, fontWeight: 700, textDecoration: 'none' }}>
+                Sign in
               </Link>
             </p>
           </div>
 
           {/* Server error */}
           {serverError && (
-            <div role="alert" className="mb-6 flex items-start gap-2.5 border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-black">
-              <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            <div role="alert" style={{
+              display: 'flex', alignItems: 'center', gap: 9,
+              background: '#fff5f5', border: `1px solid #fcc`, borderRadius: 8,
+              padding: '10px 14px', fontSize: 12, color: C.error, fontWeight: 500,
+              marginBottom: 18,
+            }}>
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" />
               </svg>
               {serverError}
             </div>
           )}
 
-          <form id="register-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+          {/* Form */}
+          <form id="register-form" onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* Name */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="register-name">Full name</Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-neutral-400">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                  </svg>
+            <div>
+              <label htmlFor="register-name" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 7 }}>
+                Full name
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.muted, display: 'flex', pointerEvents: 'none' }}>
+                  <UserIcon />
                 </span>
-                <input id="register-name" name="name" type="text" autoComplete="name"
-                  value={values.name} onChange={handleChange} placeholder="Jane Doe"
-                  aria-invalid={!!errors.name} aria-describedby={errors.name ? 'register-name-error' : undefined}
-                  className={`${inputBase} ${errors.name ? inputError : inputNormal}`} />
+                <input
+                  id="register-name" name="name" type="text" autoComplete="name"
+                  value={values.name} onChange={handleChange}
+                  placeholder="Jane Doe"
+                  aria-invalid={!!errors.name}
+                  style={{ ...inputBase, borderColor: errors.name ? C.error : C.border }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.background = '#fff' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = errors.name ? C.error : C.border; e.currentTarget.style.background = C.bg }}
+                />
               </div>
-              {errors.name && <ErrorMsg id="register-name-error" msg={errors.name} />}
+              {errors.name && <p role="alert" style={{ fontSize: 11, color: C.error, marginTop: 5, fontWeight: 500 }}>{errors.name}</p>}
             </div>
 
             {/* Email */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="register-email">Email address</Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-neutral-400">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                  </svg>
+            <div>
+              <label htmlFor="register-email" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 7 }}>
+                Email address
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.muted, display: 'flex', pointerEvents: 'none' }}>
+                  <MailIcon />
                 </span>
-                <input id="register-email" name="email" type="email" autoComplete="email"
-                  value={values.email} onChange={handleChange} placeholder="you@example.com"
-                  aria-invalid={!!errors.email} aria-describedby={errors.email ? 'register-email-error' : undefined}
-                  className={`${inputBase} ${errors.email ? inputError : inputNormal}`} />
+                <input
+                  id="register-email" name="email" type="email" autoComplete="email"
+                  value={values.email} onChange={handleChange}
+                  placeholder="you@example.com"
+                  aria-invalid={!!errors.email}
+                  style={{ ...inputBase, borderColor: errors.email ? C.error : C.border }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.background = '#fff' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = errors.email ? C.error : C.border; e.currentTarget.style.background = C.bg }}
+                />
               </div>
-              {errors.email && <ErrorMsg id="register-email-error" msg={errors.email} />}
+              {errors.email && <p role="alert" style={{ fontSize: 11, color: C.error, marginTop: 5, fontWeight: 500 }}>{errors.email}</p>}
             </div>
 
             {/* Password */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="register-password">Password</Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-neutral-400">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                  </svg>
+            <div>
+              <label htmlFor="register-password" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 7 }}>
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.muted, display: 'flex', pointerEvents: 'none' }}>
+                  <LockIcon />
                 </span>
-                <input id="register-password" name="password" type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password" value={values.password} onChange={handleChange}
-                  placeholder="Min. 8 characters" aria-invalid={!!errors.password}
-                  aria-describedby="register-password-hint"
-                  className={`${inputBase} pr-11 ${errors.password ? inputError : inputNormal}`} />
+                <input
+                  id="register-password" name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={values.password} onChange={handleChange}
+                  placeholder="Min. 8 characters"
+                  aria-invalid={!!errors.password}
+                  style={{ ...inputBase, paddingRight: 40, borderColor: errors.password ? C.error : C.border }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.background = '#fff' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = errors.password ? C.error : C.border; e.currentTarget.style.background = C.bg }}
+                />
                 <button type="button" id="register-toggle-password"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPassword((p) => !p)}
-                  className="absolute inset-y-0 right-3.5 flex items-center text-neutral-400 transition-colors hover:text-black">
-                  {showPassword ? <EyeClosed /> : <EyeOpen />}
+                  onClick={() => setShowPassword(p => !p)}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.muted, display: 'flex', padding: 0 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+                  onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
+                  <EyeIcon off={showPassword} />
                 </button>
               </div>
-              {/* Strength meter - B&W version */}
+              {/* Strength bar */}
               {values.password && (
-                <div id="register-password-hint" className="flex items-center gap-2">
-                  <div className="flex flex-1 gap-1">
-                    {[1, 2, 3, 4].map((n) => (
-                      <div key={n} className={`h-0.5 flex-1 transition-all duration-200 ${n <= strength.score ? strengthColors[strength.score - 1] : 'bg-neutral-100'}`} />
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, display: 'flex', gap: 3 }}>
+                    {[1, 2, 3, 4].map(n => (
+                      <div key={n} style={{
+                        flex: 1, height: 3, borderRadius: 2,
+                        background: n <= strength.score ? strength.color : C.border,
+                        transition: 'background .25s',
+                      }} />
                     ))}
                   </div>
-                  {strength.label && <span className="text-xs text-neutral-500 font-medium">{strength.label}</span>}
+                  {strength.label && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: strength.color, letterSpacing: '0.04em', flexShrink: 0 }}>
+                      {strength.label}
+                    </span>
+                  )}
                 </div>
               )}
-              {errors.password && <ErrorMsg msg={errors.password} />}
+              {errors.password && <p role="alert" style={{ fontSize: 11, color: C.error, marginTop: 5, fontWeight: 500 }}>{errors.password}</p>}
             </div>
 
-            {/* Confirm password */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="register-confirm">Confirm password</Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-neutral-400">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                  </svg>
+            {/* Confirm Password */}
+            <div>
+              <label htmlFor="register-confirm" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 7 }}>
+                Confirm password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.muted, display: 'flex', pointerEvents: 'none' }}>
+                  <LockIcon />
                 </span>
-                <input id="register-confirm" name="confirmPassword" type={showConfirm ? 'text' : 'password'}
-                  autoComplete="new-password" value={values.confirmPassword} onChange={handleChange}
-                  placeholder="Re-enter your password" aria-invalid={!!errors.confirmPassword}
-                  aria-describedby={errors.confirmPassword ? 'register-confirm-error' : undefined}
-                  className={`${inputBase} pr-20 ${errors.confirmPassword ? inputError : values.confirmPassword && values.confirmPassword === values.password ? inputOk : inputNormal}`} />
-                <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3.5">
+                <input
+                  id="register-confirm" name="confirmPassword"
+                  type={showConfirm ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={values.confirmPassword} onChange={handleChange}
+                  placeholder="Re-enter your password"
+                  aria-invalid={!!errors.confirmPassword}
+                  style={{ ...inputBase, paddingRight: 68, borderColor: errors.confirmPassword ? C.error : (values.confirmPassword && values.confirmPassword === values.password) ? C.ok : C.border }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.background = '#fff' }}
+                  onBlur={e => {
+                    const match = values.confirmPassword && values.confirmPassword === values.password
+                    e.currentTarget.style.borderColor = errors.confirmPassword ? C.error : match ? C.ok : C.border
+                    e.currentTarget.style.background = C.bg
+                  }}
+                />
+                <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   {values.confirmPassword && values.confirmPassword === values.password && (
-                    <svg className="h-4 w-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <span style={{ color: C.ok, display: 'flex' }}><CheckSmall /></span>
                   )}
                   <button type="button" id="register-toggle-confirm"
                     aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                    onClick={() => setShowConfirm((p) => !p)}
-                    className="flex items-center text-neutral-400 transition-colors hover:text-black">
-                    {showConfirm ? <EyeClosed /> : <EyeOpen />}
+                    onClick={() => setShowConfirm(p => !p)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, display: 'flex', padding: 0 }}
+                    onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+                    onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
+                    <EyeIcon off={showConfirm} />
                   </button>
                 </div>
               </div>
-              {errors.confirmPassword && <ErrorMsg id="register-confirm-error" msg={errors.confirmPassword} />}
+              {errors.confirmPassword && <p role="alert" style={{ fontSize: 11, color: C.error, marginTop: 5, fontWeight: 500 }}>{errors.confirmPassword}</p>}
             </div>
 
             {/* Terms */}
-            <div className="flex flex-col gap-1">
-              <label className="flex cursor-pointer items-start gap-3">
-                <div className="relative mt-0.5 shrink-0">
-                  <input id="register-agree" type="checkbox" checked={agreed}
-                    onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setAgreeError(false) }}
-                    className="peer sr-only" />
-                  <div className={`flex h-4 w-4 items-center justify-center border transition-all duration-150 peer-checked:border-black peer-checked:bg-black peer-focus-visible:ring-1 peer-focus-visible:ring-black/30 ${agreeError ? 'border-neutral-400' : 'border-neutral-300 bg-white'}`}>
-                    {agreed && (
-                      <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
+            <div>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 11, cursor: 'pointer' }}>
+                <div style={{ position: 'relative', marginTop: 2, flexShrink: 0 }}>
+                  <input
+                    id="register-agree" type="checkbox" checked={agreed}
+                    onChange={e => { setAgreed(e.target.checked); if (e.target.checked) setAgreeError(false) }}
+                    style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', margin: 0 }}
+                  />
+                  <div style={{
+                    width: 17, height: 17, borderRadius: 4,
+                    border: `1.5px solid ${agreeError ? C.error : agreed ? C.dark : C.border}`,
+                    background: agreed ? C.dark : '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all .18s',
+                  }}>
+                    {agreed && <span style={{ color: '#fff', display: 'flex', transform: 'scale(0.85)' }}><CheckSmall /></span>}
                   </div>
                 </div>
-                <span className="text-xs leading-5 text-neutral-500">
+                <span style={{ fontSize: 12, lineHeight: 1.6, color: C.muted }}>
                   I agree to the{' '}
-                  <Link href="#" className="font-semibold text-black underline underline-offset-2 hover:text-neutral-600">Terms of Service</Link>
+                  <Link href="#" style={{ color: C.dark, fontWeight: 700, textDecoration: 'none', borderBottom: `1px solid ${C.border}` }}>Terms of Service</Link>
                   {' '}and{' '}
-                  <Link href="#" className="font-semibold text-black underline underline-offset-2 hover:text-neutral-600">Privacy Policy</Link>
+                  <Link href="#" style={{ color: C.dark, fontWeight: 700, textDecoration: 'none', borderBottom: `1px solid ${C.border}` }}>Privacy Policy</Link>
                 </span>
               </label>
-              {agreeError && <p role="alert" className="ml-7 text-xs text-black font-medium">You must agree to continue</p>}
+              {agreeError && (
+                <p role="alert" style={{ fontSize: 11, color: C.error, marginTop: 5, fontWeight: 500, marginLeft: 28 }}>
+                  You must agree to continue
+                </p>
+              )}
             </div>
 
             {/* Submit */}
             <button id="register-submit" type="submit" disabled={loading}
-              className="group mt-1 flex w-full items-center justify-center gap-2 border border-black bg-black py-3 text-sm font-semibold text-white transition-all duration-150 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60">
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', paddingTop: 13, paddingBottom: 13,
+                background: loading ? '#555' : C.dark, color: '#fff',
+                border: 'none', borderRadius: 8,
+                fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'background .18s, transform .15s',
+                letterSpacing: '0.02em', marginTop: 2,
+              }}
+              onMouseEnter={e => { if (!loading) { e.currentTarget.style.background = '#2a2a2a'; e.currentTarget.style.transform = 'translateY(-1px)' } }}
+              onMouseLeave={e => { if (!loading) { e.currentTarget.style.background = C.dark; e.currentTarget.style.transform = 'none' } }}>
               {loading ? (
                 <>
-                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" style={{ animation: 'auth-spin 1s linear infinite' }}>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                    <path fill="currentColor" fillOpacity="0.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   Creating account…
                 </>
               ) : (
                 <>
                   Create Account
-                  <svg className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </>
               )}
             </button>
           </form>
-        </div>
 
-        <p className="mt-5 text-center text-xs text-neutral-400">
-          Protected by end-to-end encryption.{' '}
-          <Link href="#" className="text-neutral-500 underline underline-offset-2 hover:text-black">Learn more</Link>
-        </p>
+          <p style={{ marginTop: 18, fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 1.7 }}>
+            Protected by end-to-end encryption.{' '}
+            <Link href="#" style={{ color: C.muted, fontWeight: 600, textDecoration: 'underline' }}>Learn more</Link>
+          </p>
+        </div>
       </div>
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
+        @keyframes auth-spin { to { transform: rotate(360deg); } }
+        @media (max-width: 640px) {
+          .auth-card { grid-template-columns: 1fr !important; }
+          .auth-card > div:first-child { display: none !important; }
+        }
+      `}</style>
     </div>
   )
 }
