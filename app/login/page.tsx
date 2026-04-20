@@ -1,10 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../context/AuthContext'
+
+/* ── Brand tokens ── */
+const C = {
+  bg:      '#F7F7F7',
+  surface: '#FFFFFF',
+  dark:    '#111111',
+  muted:   '#6B6B6B',
+  accent:  '#FF6A00',
+  border:  '#DCDCDC',
+  error:   '#D93025',
+}
 
 type FormState  = { email: string; password: string }
 type FieldError = Partial<FormState>
@@ -12,95 +22,48 @@ type FieldError = Partial<FormState>
 function validate(v: FormState): FieldError {
   const e: FieldError = {}
   if (!v.email) e.email = 'Email is required'
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) e.email = 'Enter a valid email address'
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) e.email = 'Enter a valid email'
   if (!v.password) e.password = 'Password is required'
-  else if (v.password.length < 6) e.password = 'Password must be at least 6 characters'
+  else if (v.password.length < 6) e.password = 'At least 6 characters'
   return e
 }
 
-/* ── Shared micro-components ─────────────────────────────────────── */
-function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      style={{
-        fontSize: '12px',
-        fontWeight: 600,
-        letterSpacing: '0.06em',
-        textTransform: 'uppercase',
-        color: 'var(--text-secondary)',
-        display: 'block',
-        marginBottom: '8px',
-      }}
-    >
-      {children}
-    </label>
-  )
-}
-
-function FieldError({ id, msg }: { id?: string; msg: string }) {
-  return (
-    <p id={id} role="alert" style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '5px',
-      fontSize: '12px',
-      color: '#C0392B',
-      marginTop: '6px',
-      fontWeight: 500,
-    }}>
-      <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-      </svg>
-      {msg}
-    </p>
-  )
-}
-
-/* ── Icons ───────────────────────────────────────────────────────── */
+/* ── Tiny icons ── */
 function MailIcon() {
   return (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
     </svg>
   )
 }
 function LockIcon() {
   return (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
     </svg>
   )
 }
 function EyeIcon({ off }: { off?: boolean }) {
   return off ? (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
     </svg>
   ) : (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
-      <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-    </svg>
-  )
-}
-function ArrowRight() {
-  return (
-    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14M12 5l7 7-7 7"/>
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+      <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   )
 }
 
-/* ── Page ─────────────────────────────────────────────────────────── */
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuth()
-  const [values, setValues]           = useState<FormState>({ email: '', password: '' })
-  const [errors, setErrors]           = useState<FieldError>({})
-  const [serverError, setServerError] = useState('')
+  const [values, setValues]             = useState<FormState>({ email: '', password: '' })
+  const [errors, setErrors]             = useState<FieldError>({})
+  const [serverError, setServerError]   = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading]         = useState(false)
+  const [loading, setLoading]           = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target
@@ -120,220 +83,152 @@ export default function LoginPage() {
     router.push('/dashboard')
   }
 
-  /* ── shared input style ── */
-  const inputStyle = (hasError?: boolean): React.CSSProperties => ({
+  const inputBase: React.CSSProperties = {
     width: '100%',
-    padding: '13px 44px 13px 44px',
-    fontSize: '14px',
-    fontFamily: 'var(--font-sans)',
-    color: 'var(--text-primary)',
-    background: '#FAFAFA',
-    border: `1.5px solid ${hasError ? '#C0392B' : 'var(--border)'}`,
-    borderRadius: '10px',
+    paddingTop: '11px',
+    paddingBottom: '11px',
+    paddingLeft: '40px',
+    paddingRight: '14px',
+    fontSize: '13px',
+    color: C.dark,
+    background: C.bg,
+    border: `1.5px solid ${C.border}`,
+    borderRadius: '8px',
     outline: 'none',
-    transition: 'border-color 0.2s ease, background 0.2s ease',
-  })
-
-  const EDITORIAL_QUOTES = [
-    { text: "Good writing carries ideas across time.", attr: '— George Orwell' },
-    { text: "The secret to editing your work is simple: you need to become its reader instead of its writer.", attr: '— Zadie Smith' },
-    { text: "A writer only begins a book. A reader finishes it.", attr: '— Samuel Johnson' },
-  ]
-  const quote = EDITORIAL_QUOTES[1]
+    fontFamily: 'inherit',
+    transition: 'border-color .18s, background .18s',
+  }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'var(--font-sans)' }}>
+    <div style={{
+      minHeight: '100vh',
+      background: C.bg,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+      fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
+    }}>
 
-      {/* ── LEFT PANEL ──────────────────────────────────────── */}
-      <div
-        style={{
-          flex: '0 0 45%',
-          display: 'none',
-          position: 'relative',
-          background: 'var(--text-primary)',
-          overflow: 'hidden',
-        }}
-        className="auth-left-panel"
-      >
-        {/* Background image with overlay */}
-        <div style={{ position: 'absolute', inset: 0 }}>
-          <Image
-            src="https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=1200&q=75&auto=format&fit=crop"
-            alt="Editorial background"
-            fill
-            priority
-            style={{ objectFit: 'cover', opacity: 0.18 }}
-          />
-        </div>
+      {/* Back link */}
+      <Link href="/" style={{
+        position: 'fixed', top: 24, left: 28,
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 12, fontWeight: 600, color: C.muted, textDecoration: 'none',
+        transition: 'color .18s',
+        zIndex: 10,
+      }}
+        onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+        onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Home
+      </Link>
 
-        {/* Top-left logo */}
-        <div style={{ position: 'relative', zIndex: 2, padding: '40px 48px 0' }}>
-          <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline', gap: '2px' }}>
-            <span style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--accent)' }}>BLOG</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.05em', color: '#fff' }}>RAM</span>
-          </Link>
-        </div>
+      {/* Centered card */}
+      <div style={{
+        width: '100%',
+        maxWidth: 860,
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        borderRadius: 18,
+        overflow: 'hidden',
+        boxShadow: '0 24px 80px -8px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06)',
+      }} className="auth-card">
 
-        {/* Center content */}
+        {/* ── LEFT — dark panel ── */}
         <div style={{
-          position: 'relative',
-          zIndex: 2,
+          background: C.dark,
+          padding: 'clamp(36px,5vw,56px)',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
-          height: '100%',
-          padding: '0 48px 80px',
+          justifyContent: 'space-between',
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: 520,
         }}>
-          {/* Kicker */}
-          <p style={{
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            color: 'var(--accent)',
-            marginBottom: '24px',
-          }}>
-            Welcome Back
-          </p>
-
-          {/* Big headline */}
-          <h1 style={{
-            fontSize: 'clamp(36px, 3.5vw, 52px)',
-            fontWeight: 900,
-            lineHeight: 1.06,
-            letterSpacing: '-0.04em',
-            color: '#FFFFFF',
-            marginBottom: '24px',
-          }}>
-            Your stories
-            <br />
-            are waiting
-            <br />
-            <span style={{ color: 'rgba(255,255,255,0.4)' }}>for you.</span>
-          </h1>
-
-          {/* Description */}
-          <p style={{
-            fontSize: '15px',
-            lineHeight: 1.75,
-            color: 'rgba(255,255,255,0.55)',
-            maxWidth: '360px',
-            marginBottom: '48px',
-          }}>
-            Sign in to continue reading, writing, and connecting with a community of curious minds.
-          </p>
-
-          {/* Quote */}
+          {/* Grid texture */}
           <div style={{
-            borderLeft: '2px solid var(--accent)',
-            paddingLeft: '20px',
-          }}>
-            <p style={{ fontSize: '14px', lineHeight: 1.7, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginBottom: '8px' }}>
-              &ldquo;{quote.text}&rdquo;
-            </p>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', fontWeight: 500, letterSpacing: '0.04em' }}>
-              {quote.attr}
-            </p>
+            position: 'absolute', inset: 0,
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
+            backgroundSize: '36px 36px',
+            pointerEvents: 'none',
+          }} />
+          {/* Orange glow blob */}
+          <div style={{
+            position: 'absolute', bottom: -80, right: -80,
+            width: 260, height: 260,
+            background: `radial-gradient(circle, rgba(255,106,0,0.22) 0%, transparent 70%)`,
+            pointerEvents: 'none',
+          }} />
+
+          {/* Logo */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.04em', color: C.accent }}>BLOG</span>
+              <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.05em', color: '#fff' }}>RAM</span>
+            </Link>
           </div>
 
-          {/* Stats */}
-          <div style={{ display: 'flex', gap: '40px', marginTop: '56px' }}>
-            {[
-              { value: '2.4K+', label: 'Articles' },
-              { value: '18K+', label: 'Readers' },
-              { value: '340+', label: 'Writers' },
-            ].map(s => (
-              <div key={s.label}>
-                <p style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.04em', color: '#fff' }}>{s.value}</p>
-                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.label}</p>
+          {/* Main copy */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 16 }}>
+              Welcome back
+            </p>
+            <h1 style={{
+              fontSize: 'clamp(26px,3.5vw,38px)', fontWeight: 800,
+              lineHeight: 1.08, letterSpacing: '-0.04em', color: '#fff', marginBottom: 16,
+            }}>
+              Your stories<br />
+              <span style={{ color: 'rgba(255,255,255,0.35)' }}>are waiting.</span>
+            </h1>
+            <p style={{ fontSize: 13, lineHeight: 1.75, color: 'rgba(255,255,255,0.5)', maxWidth: 280, marginBottom: 36 }}>
+              Sign in to continue reading, writing, and connecting with a community of curious minds.
+            </p>
+
+            {/* Editorial quote */}
+            <div style={{ borderLeft: `2px solid ${C.accent}`, paddingLeft: 16 }}>
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', marginBottom: 6 }}>
+                &ldquo;A writer only begins a book. A reader finishes it.&rdquo;
+              </p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontWeight: 500, letterSpacing: '0.04em' }}>
+                — Samuel Johnson
+              </p>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: 28 }}>
+            {[{ v: '12k+', l: 'Writers' }, { v: '48k', l: 'Articles' }, { v: '200k', l: 'Readers' }].map(s => (
+              <div key={s.l}>
+                <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.04em', color: '#fff' }}>{s.v}</p>
+                <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{s.l}</p>
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* ── RIGHT PANEL ─────────────────────────────────────── */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'var(--bg-page)',
-        padding: 'clamp(40px, 6vw, 80px) clamp(24px, 5vw, 64px)',
-        minHeight: '100vh',
-      }}>
-        <div style={{ width: '100%', maxWidth: '420px' }}>
-
-          {/* Back link */}
-          <Link
-            href="/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              letterSpacing: '0.04em',
-              marginBottom: '48px',
-              transition: 'color 0.2s ease',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-          >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
-            </svg>
-            Back to Home
-          </Link>
-
-          {/* Mobile-only logo */}
-          <div className="auth-mobile-logo" style={{ marginBottom: '32px' }}>
-            <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'baseline', gap: '2px' }}>
-              <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--accent)' }}>BLOG</span>
-              <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.05em', color: 'var(--text-primary)' }}>RAM</span>
-            </Link>
-          </div>
+        {/* ── RIGHT — form panel ── */}
+        <div style={{
+          background: C.surface,
+          padding: 'clamp(36px,5vw,56px)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}>
 
           {/* Heading */}
-          <div style={{ marginBottom: '36px' }}>
-            <p style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: 'var(--accent)',
-              marginBottom: '12px',
-            }}>
+          <div style={{ marginBottom: 28 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 10 }}>
               Sign In
             </p>
-            <h2 style={{
-              fontSize: 'clamp(26px, 3vw, 34px)',
-              fontWeight: 800,
-              letterSpacing: '-0.03em',
-              lineHeight: 1.1,
-              color: 'var(--text-primary)',
-              marginBottom: '10px',
-            }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.03em', color: C.dark, marginBottom: 8 }}>
               Welcome back
             </h2>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Don&apos;t have an account?{' '}
-              <Link
-                href="/register"
-                style={{
-                  color: 'var(--text-primary)',
-                  fontWeight: 700,
-                  textDecoration: 'none',
-                  borderBottom: '1.5px solid var(--text-primary)',
-                  paddingBottom: '1px',
-                  transition: 'opacity 0.2s ease',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = '0.6')}
-                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-              >
+            <p style={{ fontSize: 13, color: C.muted }}>
+              No account?{' '}
+              <Link href="/register" style={{ color: C.accent, fontWeight: 700, textDecoration: 'none' }}>
                 Create one free
               </Link>
             </p>
@@ -342,178 +237,131 @@ export default function LoginPage() {
           {/* Server error */}
           {serverError && (
             <div role="alert" style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              background: '#FFF5F5',
-              border: '1px solid #FED7D7',
-              borderRadius: '10px',
-              padding: '12px 16px',
-              fontSize: '13px',
-              color: '#C0392B',
-              fontWeight: 500,
-              marginBottom: '24px',
+              display: 'flex', alignItems: 'center', gap: 9,
+              background: '#fff5f5', border: `1px solid #fcc`, borderRadius: 8,
+              padding: '10px 14px', fontSize: 12, color: C.error, fontWeight: 500,
+              marginBottom: 20,
             }}>
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" />
               </svg>
               {serverError}
             </div>
           )}
 
           {/* Form */}
-          <form id="login-form" onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <form id="login-form" onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Email */}
             <div>
-              <FieldLabel htmlFor="login-email">Email address</FieldLabel>
+              <label htmlFor="login-email" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 7 }}>
+                Email address
+              </label>
               <div style={{ position: 'relative' }}>
-                <span style={{
-                  position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
-                  color: 'var(--text-muted)', pointerEvents: 'none', display: 'flex',
-                }}>
+                <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: C.muted, display: 'flex', pointerEvents: 'none' }}>
                   <MailIcon />
                 </span>
                 <input
-                  id="login-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={values.email}
-                  onChange={handleChange}
+                  id="login-email" name="email" type="email" autoComplete="email"
+                  value={values.email} onChange={handleChange}
                   placeholder="you@example.com"
                   aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? 'login-email-error' : undefined}
-                  style={inputStyle(!!errors.email)}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--text-primary)'; e.currentTarget.style.background = '#fff' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = errors.email ? '#C0392B' : 'var(--border)'; e.currentTarget.style.background = '#FAFAFA' }}
+                  style={{ ...inputBase, borderColor: errors.email ? C.error : C.border }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.background = '#fff' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = errors.email ? C.error : C.border; e.currentTarget.style.background = C.bg }}
                 />
               </div>
-              {errors.email && <FieldError id="login-email-error" msg={errors.email} />}
+              {errors.email && <p role="alert" style={{ fontSize: 11, color: C.error, marginTop: 5, fontWeight: 500 }}>{errors.email}</p>}
             </div>
 
             {/* Password */}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <FieldLabel htmlFor="login-password">Password</FieldLabel>
-                <Link
-                  href="#"
-                  style={{
-                    fontSize: '12px',
-                    color: 'var(--text-secondary)',
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                    transition: 'color 0.2s ease',
-                    marginBottom: '8px',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
-                >
-                  Forgot password?
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+                <label htmlFor="login-password" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>
+                  Password
+                </label>
+                <Link href="#" style={{ fontSize: 11, color: C.muted, textDecoration: 'none', fontWeight: 500, transition: 'color .18s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = C.accent)}
+                  onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
+                  Forgot?
                 </Link>
               </div>
               <div style={{ position: 'relative' }}>
-                <span style={{
-                  position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
-                  color: 'var(--text-muted)', pointerEvents: 'none', display: 'flex',
-                }}>
+                <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: C.muted, display: 'flex', pointerEvents: 'none' }}>
                   <LockIcon />
                 </span>
                 <input
-                  id="login-password"
-                  name="password"
+                  id="login-password" name="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  value={values.password}
-                  onChange={handleChange}
+                  value={values.password} onChange={handleChange}
                   placeholder="••••••••"
                   aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? 'login-password-error' : undefined}
-                  style={{ ...inputStyle(!!errors.password), paddingRight: '44px' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--text-primary)'; e.currentTarget.style.background = '#fff' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = errors.password ? '#C0392B' : 'var(--border)'; e.currentTarget.style.background = '#FAFAFA' }}
+                  style={{ ...inputBase, paddingRight: 40, borderColor: errors.password ? C.error : C.border }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.background = '#fff' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = errors.password ? C.error : C.border; e.currentTarget.style.background = C.bg }}
                 />
-                <button
-                  type="button"
-                  id="login-toggle-password"
+                <button type="button" id="login-toggle-password"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   onClick={() => setShowPassword(p => !p)}
-                  style={{
-                    position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-muted)', display: 'flex', transition: 'color 0.2s ease',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                >
+                  style={{ position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.muted, display: 'flex', padding: 0 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+                  onMouseLeave={e => (e.currentTarget.style.color = C.muted)}>
                   <EyeIcon off={showPassword} />
                 </button>
               </div>
-              {errors.password && <FieldError id="login-password-error" msg={errors.password} />}
+              {errors.password && <p role="alert" style={{ fontSize: 11, color: C.error, marginTop: 5, fontWeight: 500 }}>{errors.password}</p>}
             </div>
 
             {/* Submit */}
-            <button
-              id="login-submit"
-              type="submit"
-              disabled={loading}
+            <button id="login-submit" type="submit" disabled={loading}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                width: '100%',
-                padding: '14px 24px',
-                background: loading ? '#555' : 'var(--text-primary)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: 700,
-                fontFamily: 'var(--font-sans)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', paddingTop: 13, paddingBottom: 13,
+                background: loading ? '#555' : C.dark, color: '#fff',
+                border: 'none', borderRadius: 8,
+                fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'background 0.2s ease, transform 0.15s ease',
-                letterSpacing: '0.02em',
-                marginTop: '4px',
+                transition: 'background .18s, transform .15s',
+                letterSpacing: '0.02em', marginTop: 4,
               }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#2a2a2a' }}
-              onMouseLeave={e => { if (!loading) e.currentTarget.style.background = 'var(--text-primary)' }}
-            >
+              onMouseEnter={e => { if (!loading) { e.currentTarget.style.background = '#2a2a2a'; e.currentTarget.style.transform = 'translateY(-1px)' } }}
+              onMouseLeave={e => { if (!loading) { e.currentTarget.style.background = C.dark; e.currentTarget.style.transform = 'none' } }}>
               {loading ? (
                 <>
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25"/>
-                    <path fill="currentColor" fillOpacity="0.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" style={{ animation: 'auth-spin 1s linear infinite' }}>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                    <path fill="currentColor" fillOpacity="0.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   Signing in…
                 </>
               ) : (
-                <>Sign In <ArrowRight /></>
+                <>
+                  Sign In
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </>
               )}
             </button>
           </form>
 
-          {/* Footer note */}
-          <p style={{
-            marginTop: '28px',
-            fontSize: '12px',
-            color: 'var(--text-muted)',
-            textAlign: 'center',
-            lineHeight: 1.6,
-          }}>
+          {/* Footer */}
+          <p style={{ marginTop: 22, fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 1.7 }}>
             By signing in you agree to our{' '}
-            <Link href="#" style={{ color: 'var(--text-secondary)', fontWeight: 600, textDecoration: 'none', borderBottom: '1px solid var(--border)' }}>Terms</Link>
+            <Link href="#" style={{ color: C.muted, fontWeight: 600, textDecoration: 'underline' }}>Terms</Link>
             {' '}and{' '}
-            <Link href="#" style={{ color: 'var(--text-secondary)', fontWeight: 600, textDecoration: 'none', borderBottom: '1px solid var(--border)' }}>Privacy Policy</Link>.
+            <Link href="#" style={{ color: C.muted, fontWeight: 600, textDecoration: 'underline' }}>Privacy Policy</Link>.
           </p>
         </div>
       </div>
 
       <style jsx global>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (min-width: 900px) {
-          .auth-left-panel { display: flex !important; flex-direction: column; }
-          .auth-mobile-logo { display: none !important; }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
+        @keyframes auth-spin { to { transform: rotate(360deg); } }
+        @media (max-width: 640px) {
+          .auth-card { grid-template-columns: 1fr !important; }
+          .auth-card > div:first-child { display: none !important; }
         }
       `}</style>
     </div>
