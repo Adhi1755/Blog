@@ -8,14 +8,14 @@ import { usePosts, CATEGORY_OPTIONS, type DraftPost } from '../hooks/usePosts'
 import AppHeader from '../components/AppHeader'
 
 const C = {
-  bg:      '#F7F7F7',
+  bg: '#F7F7F7',
   surface: '#FFFFFF',
-  dark:    '#111111',
-  muted:   '#6B6B6B',
-  accent:  '#FF6A00',
+  dark: '#111111',
+  muted: '#6B6B6B',
+  accent: '#FF6A00',
   accentD: 'rgba(255,106,0,0.09)',
-  border:  '#DCDCDC',
-  error:   '#D93025',
+  border: '#DCDCDC',
+  error: '#D93025',
 }
 
 const inputStyle = (hasError?: boolean): React.CSSProperties => ({
@@ -48,26 +48,28 @@ function SideCard({ title, children }: { title: string; children: React.ReactNod
 }
 
 function EditorContent() {
-  const router      = useRouter()
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const editSlug    = searchParams.get('edit')
+  const editSlug = searchParams.get('edit')
   const { user, loading: authLoading } = useAuth()
   const { posts, addPost, updatePost, hydrated } = usePosts()
 
-  const [title, setTitle]           = useState('')
-  const [excerpt, setExcerpt]       = useState('')
-  const [content, setContent]       = useState('')
-  const [category, setCategory]     = useState('')
+  const [title, setTitle] = useState('')
+  const [excerpt, setExcerpt] = useState('')
+  const [content, setContent] = useState('')
+  const [category, setCategory] = useState('')
   const [categoryColor, setCategoryColor] = useState('violet')
-  const [thumbnail, setThumbnail]   = useState('')
-  const [tagsInput, setTagsInput]   = useState('')
-  const [featured, setFeatured]     = useState(false)
-  const [saving, setSaving]         = useState(false)
-  const [saved, setSaved]           = useState(false)
-  const [errors, setErrors]         = useState<Record<string, string>>({})
+  const [thumbnail, setThumbnail] = useState('')
+  const [tagsInput, setTagsInput] = useState('')
+  const [featured, setFeatured] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [predicting, setPredicting] = useState(false)
   const [predictError, setPredictError] = useState('')
-  const titleRef   = useRef<HTMLInputElement>(null)
+  const [generating, setGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState('')
+  const titleRef = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
 
   function insertFormatting(type: string) {
@@ -78,11 +80,11 @@ function EditorContent() {
     let before = '', after = ''
     switch (type) {
       case 'Heading': before = '### '; break
-      case 'Bold':    before = '**'; after = '**'; break
-      case 'Italic':  before = '_';  after = '_';  break
-      case 'List':    before = '- '; break
-      case 'Code':    before = '`';  after = '`';  break
-      case 'Link':    before = '[';  after = '](https://)'; break
+      case 'Bold': before = '**'; after = '**'; break
+      case 'Italic': before = '_'; after = '_'; break
+      case 'List': before = '- '; break
+      case 'Code': before = '`'; after = '`'; break
+      case 'Link': before = '['; after = '](https://)'; break
     }
     const newText = content.slice(0, start) + before + sel + after + content.slice(end)
     setContent(newText)
@@ -104,48 +106,73 @@ function EditorContent() {
   }, [editSlug, hydrated, posts])
   useEffect(() => { titleRef.current?.focus() }, [])
 
+  async function generateBlog() {
+    if (!title.trim()) {
+      setGenerateError('Enter a title first.')
+      return
+    }
+    setGenerating(true)
+    setGenerateError('')
+    try {
+      const res = await fetch('http://localhost:5001/api/generate-blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
+      setContent(data.content ?? '')
+      setExcerpt(data.summary ?? '')
+      setErrors(prev => ({ ...prev, content: '', excerpt: '' }))
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Generation failed')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   async function predictCategory() {
-  if (!title.trim() && !excerpt.trim()) {
-    setPredictError('Add a title or summary first.')
-    return
+    if (!title.trim() && !excerpt.trim()) {
+      setPredictError('Add a title or summary first.')
+      return
+    }
+
+    setPredicting(true)
+    setPredictError('')
+
+    try {
+      const res = await fetch('https://blogengine-zovn.onrender.com/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: excerpt.trim()
+        }),
+      })
+
+      if (!res.ok) throw new Error(`API error ${res.status}`)
+
+      const data = await res.json()
+
+      console.log("API Response:", data) // 🔥 DEBUG
+
+      const predicted: string = data.prediction ?? ''
+
+      if (!predicted) throw new Error('No category returned')
+
+      const match = CATEGORY_OPTIONS.find(
+        c => c.label.toLowerCase() === predicted.toLowerCase()
+      )
+
+      setCategory(predicted)
+      setCategoryColor(match?.color ?? 'violet')
+
+    } catch (err) {
+      setPredictError(err instanceof Error ? err.message : 'Prediction failed')
+    } finally {
+      setPredicting(false)
+    }
   }
-
-  setPredicting(true)
-  setPredictError('')
-
-  try {
-    const res = await fetch('https://blogengine-zovn.onrender.com/predict', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: title.trim(),
-        description: excerpt.trim()
-      }),
-    })
-
-    if (!res.ok) throw new Error(`API error ${res.status}`)
-
-    const data = await res.json()
-
-    console.log("API Response:", data) // 🔥 DEBUG
-
-    const predicted: string = data.prediction ?? ''
-
-    if (!predicted) throw new Error('No category returned')
-
-    const match = CATEGORY_OPTIONS.find(
-      c => c.label.toLowerCase() === predicted.toLowerCase()
-    )
-
-    setCategory(predicted)
-    setCategoryColor(match?.color ?? 'violet')
-
-  } catch (err) {
-    setPredictError(err instanceof Error ? err.message : 'Prediction failed')
-  } finally {
-    setPredicting(false)
-  }
-}
 
   function validate(): boolean {
     const e: Record<string, string> = {}
@@ -257,15 +284,101 @@ function EditorContent() {
                 {errors.title && <p style={{ fontSize: 11, color: C.error, fontWeight: 500, marginTop: 4 }}>{errors.title}</p>}
               </div>
 
+              {/* ── AI Generate row ── */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: C.surface,
+                border: `1.5px solid ${generating ? C.accent + '55' : C.border}`,
+                borderRadius: 10, padding: '12px 16px',
+                transition: 'border-color .35s',
+              }}>
+                {/* left: icon + label */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                    background: generating ? C.accent : C.accentD,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background .3s',
+                    animation: generating ? 'iconBeat 1.4s ease-in-out infinite' : 'none',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={generating ? '#fff' : C.accent} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.dark }}>
+                      {generating ? 'Mistral is writing…' : 'AI Blog Generator'}
+                    </p>
+                    <p style={{ margin: 0, marginTop: 1, fontSize: 11, color: C.muted }}>
+                      {generating ? 'Filling summary & content automatically' : 'Generate full blog content from your title'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* right: error + button */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  {generateError && (
+                    <span style={{ fontSize: 11, color: C.error, fontWeight: 500, maxWidth: 160, textAlign: 'right' }}>{generateError}</span>
+                  )}
+                  <button
+                    id="generate-blog-btn"
+                    type="button"
+                    onClick={generateBlog}
+                    disabled={generating}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 7,
+                      border: 'none', borderRadius: 8, padding: '8px 18px',
+                      fontSize: 12, fontWeight: 700, color: '#fff',
+                      background: generating ? '#aaa' : `linear-gradient(135deg, ${C.accent} 0%, #ff8c00 100%)`,
+                      cursor: generating ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit', opacity: generating ? 0.7 : 1,
+                      boxShadow: generating ? 'none' : '0 2px 10px rgba(255,106,0,0.4)',
+                      transition: 'opacity .18s, transform .15s, box-shadow .18s',
+                    }}
+                    onMouseEnter={e => { if (!generating) { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(255,106,0,0.55)' } }}
+                    onMouseLeave={e => { if (!generating) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(255,106,0,0.4)' } }}
+                  >
+                    {generating ? (
+                      <>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}>
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                        </svg>
+                        Generating…
+                      </>
+                    ) : (
+                      <>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                        Generate Blog
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
               {/* Summary */}
               <div>
-                <label htmlFor="editor-excerpt" style={labelStyle}>Summary</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <label htmlFor="editor-excerpt" style={{ ...labelStyle, marginBottom: 0 }}>Summary</label>
+                  {generating && <span style={{ fontSize: 11, color: C.accent, fontWeight: 600, letterSpacing: '0.04em' }}>✦ AI writing…</span>}
+                </div>
                 <textarea
                   id="editor-excerpt" rows={3} value={excerpt}
+                  className={generating ? 'ai-textarea-glow' : ''}
                   onChange={e => { setExcerpt(e.target.value); setErrors(prev => ({ ...prev, excerpt: '' })) }}
-                  placeholder="A brief summary that appears on blog cards and search results…"
-                  style={{ ...inputStyle(!!errors.excerpt), resize: 'vertical', lineHeight: 1.7 }}
-                  onFocus={e => { e.currentTarget.style.borderColor = C.dark }}
+                  placeholder={generating ? 'Crafting your summary…' : 'A brief summary that appears on blog cards and search results…'}
+                  disabled={generating}
+                  style={{
+                    ...inputStyle(!!errors.excerpt),
+                    resize: 'vertical', lineHeight: 1.7,
+                    transition: 'border-color .3s',
+                    ...(generating ? {
+                      borderColor: C.accent + '88',
+                      cursor: 'wait',
+                    } : {}),
+                  }}
+                  onFocus={e => { if (!generating) e.currentTarget.style.borderColor = C.dark }}
                   onBlur={e => { e.currentTarget.style.borderColor = errors.excerpt ? C.error : C.border }}
                 />
                 {errors.excerpt && <p style={{ fontSize: 11, color: C.error, fontWeight: 500, marginTop: 5 }}>{errors.excerpt}</p>}
@@ -275,21 +388,24 @@ function EditorContent() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <label htmlFor="editor-content" style={{ ...labelStyle, marginBottom: 0 }}>Content</label>
-                  <span style={{ fontSize: 11, color: C.muted }}>{content.length} chars</span>
+                  <span style={{ fontSize: 11, color: generating ? C.accent : C.muted, fontWeight: generating ? 600 : 400, transition: 'color .3s' }}>
+                    {generating ? '✦ Writing…' : `${content.length} chars`}
+                  </span>
                 </div>
                 {/* Toolbar */}
-                <div style={{ display: 'flex', gap: 6, background: C.bg, border: `1.5px solid ${C.border}`, borderBottom: 'none', borderRadius: '8px 8px 0 0', padding: '8px 12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 6, background: C.bg, borderTop: `1.5px solid ${generating ? C.accent + '55' : C.border}`, borderLeft: `1.5px solid ${generating ? C.accent + '55' : C.border}`, borderRight: `1.5px solid ${generating ? C.accent + '55' : C.border}`, borderBottom: 'none', borderRadius: '8px 8px 0 0', padding: '8px 12px', flexWrap: 'wrap', transition: 'border-color .3s' }}>
                   {['Heading', 'Bold', 'Italic', 'List', 'Code', 'Link'].map(t => (
                     <button key={t} type="button"
-                      onMouseDown={e => { e.preventDefault(); insertFormatting(t) }}
+                      onMouseDown={e => { e.preventDefault(); if (!generating) insertFormatting(t) }}
+                      disabled={generating}
                       style={{
                         fontSize: 11, fontWeight: 600, color: C.muted,
                         border: `1px solid ${C.border}`, borderRadius: 5,
                         padding: '3px 10px', background: C.surface,
-                        cursor: 'pointer', fontFamily: 'inherit',
-                        transition: 'border-color .15s, color .15s',
+                        cursor: generating ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                        transition: 'border-color .15s, color .15s', opacity: generating ? 0.45 : 1,
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark }}
+                      onMouseEnter={e => { if (!generating) { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark } }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}>
                       {t}
                     </button>
@@ -297,16 +413,23 @@ function EditorContent() {
                 </div>
                 <textarea
                   id="editor-content" ref={contentRef} rows={20} value={content}
+                  className={generating ? 'ai-textarea-glow' : ''}
                   onChange={e => { setContent(e.target.value); setErrors(prev => ({ ...prev, content: '' })) }}
-                  placeholder="Write your full post here. Use Markdown-style formatting — ### for headings, **bold**, `code`, - for lists…"
+                  placeholder={generating ? 'AI is writing your blog post…' : 'Write your full post here. Use Markdown-style formatting — ### for headings, **bold**, `code`, - for lists…'}
+                  disabled={generating}
                   style={{
                     ...inputStyle(!!errors.content),
                     borderRadius: '0 0 8px 8px',
                     resize: 'vertical', lineHeight: 1.8,
                     fontFamily: "'Fira Code', 'Courier New', monospace",
                     fontSize: 13,
+                    transition: 'border-color .3s',
+                    ...(generating ? {
+                      borderColor: C.accent + '88',
+                      cursor: 'wait',
+                    } : {}),
                   }}
-                  onFocus={e => { e.currentTarget.style.borderColor = C.dark }}
+                  onFocus={e => { if (!generating) e.currentTarget.style.borderColor = C.dark }}
                   onBlur={e => { e.currentTarget.style.borderColor = errors.content ? C.error : C.border }}
                 />
                 {errors.content && <p style={{ fontSize: 11, color: C.error, fontWeight: 500, marginTop: 5 }}>{errors.content}</p>}
@@ -486,6 +609,17 @@ function EditorContent() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
+        }
+        @keyframes aiGlow {
+          0%, 100% { box-shadow: 0 0 0 2px rgba(255,106,0,0.15); }
+          50%       { box-shadow: 0 0 0 4px rgba(255,106,0,0.40), 0 0 16px 2px rgba(255,106,0,0.12); }
+        }
+        .ai-textarea-glow {
+          animation: aiGlow 1.6s ease-in-out infinite;
+        }
+        @keyframes iconBeat {
+          0%, 100% { transform: scale(1); }
+          50%       { transform: scale(1.15); }
         }
       `}</style>
     </div>

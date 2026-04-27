@@ -11,15 +11,15 @@ import { renderInline } from '../../utils/markdown'
 
 /* ── Design tokens ─────────────────────────────────────────── */
 const C = {
-  bg:        '#F7F7F7',
-  bg2:       '#F0F0EE',
-  surface:   '#FFFFFF',
-  dark:      '#111111',
-  muted:     '#6B6B6B',
-  accent:    '#FF6A00',
+  bg: '#F7F7F7',
+  bg2: '#F0F0EE',
+  surface: '#FFFFFF',
+  dark: '#111111',
+  muted: '#6B6B6B',
+  accent: '#FF6A00',
   accentDim: 'rgba(255,106,0,0.10)',
-  border:    '#DCDCDC',
-  white:     '#FFFFFF',
+  border: '#DCDCDC',
+  white: '#FFFFFF',
 }
 
 const STORAGE_KEY = 'blogspace_posts'
@@ -296,15 +296,25 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
   const { posts, likePost, addComment, incrementViews } = usePosts()
   const router = useRouter()
 
-  // "Fallback" post loaded once from localStorage via lazy initializer — no effect, no lint violation
-  const [fallbackPost]                      = useState<Post | null | undefined>(() =>
-    getPostBySlug(slug)
-  )
-  const [commentText, setCommentText]       = useState('')
+  // "Fallback" post — start as undefined (shows skeleton on both server and client).
+  // Populated in effect so SSR and initial client render always agree (no hydration mismatch).
+  const [fallbackPost, setFallbackPost] = useState<Post | null | undefined>(undefined)
+
+  useEffect(() => {
+    setFallbackPost(getPostBySlug(slug))
+  }, [slug])
+  const [commentText, setCommentText] = useState('')
   // Only used when no logged-in user; never mirrored from props
-  const [commentName, setCommentName]       = useState('')
+  const [commentName, setCommentName] = useState('')
   const [submittingComment, setSubmittingComment] = useState(false)
-  const [commentError, setCommentError]     = useState('')
+  const [commentError, setCommentError] = useState('')
+
+  // ── AI Chat state ───────────────────────────────────────
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([])
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   // ── Animation phase: 'entering' → 'visible' → 'exiting' ──
   const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting'>('entering')
@@ -328,7 +338,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
   // Side-effect only: increment view count (no setState)
   useEffect(() => {
     incrementViews(slug)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
   // Derive the live post directly from usePosts state — no setState needed
@@ -340,6 +350,36 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
   const effectiveCommentName = user?.name ?? commentName
 
   const handleLike = useCallback(() => likePost(slug), [likePost, slug])
+
+  // ── AI Chat send ────────────────────────────────────────
+  const sendChat = useCallback(async () => {
+    const q = chatInput.trim()
+    if (!q || chatLoading) return
+    // Extract plain text from article content
+    const articleEl = document.getElementById('article-content')
+    const blogText = (articleEl?.innerText ?? '').slice(0, 6000)
+    setChatInput('')
+    setMessages(prev => [...prev, { role: 'user', text: q }])
+    setChatLoading(true)
+    try {
+      const res = await fetch('http://localhost:5001/api/ask-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blog: blogText, question: q }),
+      })
+      const data = await res.json()
+      setMessages(prev => [...prev, { role: 'ai', text: data.answer ?? data.error ?? 'No response.' }])
+    } catch {
+      setMessages(prev => [...prev, { role: 'ai', text: 'Could not reach the AI. Make sure the Flask backend is running.' }])
+    } finally {
+      setChatLoading(false)
+    }
+  }, [chatInput, chatLoading])
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, chatLoading])
 
   async function handleComment(e: React.FormEvent) {
     e.preventDefault()
@@ -358,12 +398,12 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
   }
 
   if (post === undefined) return <ArticleSkeleton />
-  if (post === null)      return <PostNotFound slug={slug} />
+  if (post === null) return <PostNotFound slug={slug} />
   // narrowed: post is Post from here on
 
-  const hasBody    = post.body && post.body.length > 0
-  const body       = hasBody ? post.body! : [{ type: 'paragraph' as const, text: post.excerpt }]
-  const comments   = post.comments ?? []
+  const hasBody = post.body && post.body.length > 0
+  const body = hasBody ? post.body! : [{ type: 'paragraph' as const, text: post.excerpt }]
+  const comments = post.comments ?? []
 
   /* ── Per-phase animation styles ── */
   const pageStyle: React.CSSProperties = {
@@ -371,7 +411,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
     background: C.bg,
     fontFamily: "'DM Sans','Helvetica Neue',sans-serif",
     color: C.dark,
-    opacity:   phase === 'visible' ? 1 : 0,
+    opacity: phase === 'visible' ? 1 : 0,
     transform: phase === 'exiting'
       ? 'translateY(-18px) scale(0.985)'
       : phase === 'entering'
@@ -411,412 +451,713 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
         </div>
       )}
 
-      {/* ── Article layout ── */}
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 clamp(16px,4vw,40px) 100px' }}>
+      {/* ── Content row: article + chat panel ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
 
-        {/* ── Article header — staggered slide-in ── */}
-        <header style={{
-          paddingTop: post.thumbnail ? 40 : 52, paddingBottom: 36,
-          animation: phase !== 'entering' ? 'content-rise .65s .15s cubic-bezier(0.22,1,0.36,1) both' : 'none',
+        {/* Article column */}
+        <div style={{
+          flex: chatOpen ? '0 0 60%' : '1 1 auto',
+          maxWidth: chatOpen ? '60%' : 760,
+          width: chatOpen ? '60%' : '100%',
+          margin: chatOpen ? '0' : '0 auto',
+          padding: '0 clamp(16px,4vw,40px) 100px',
+          transition: 'flex .35s, max-width .35s, width .35s',
+          minWidth: 0,
+          overflowX: 'hidden',
         }}>
-          {/* Back to feed — triggers exit animation */}
-          <button
-            onClick={() => navigateBack('/dashboard')}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              fontSize: 12, fontWeight: 700, color: C.muted,
-              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              marginBottom: 32, letterSpacing: '0.05em', textTransform: 'uppercase',
-              transition: 'color .18s', padding: 0,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
-            onMouseLeave={e => (e.currentTarget.style.color = C.muted)}
-          >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            All posts
-          </button>
 
-          {/* Badges row */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 22 }}>
-            <span style={{
-              fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase',
-              color: C.accent, background: C.accentDim,
-              border: '1px solid rgba(255,106,0,0.22)',
-              padding: '4px 12px', borderRadius: 100,
-            }}>
-              {post.category}
-            </span>
-            {post.featured && (
-              <span style={{
-                fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase',
-                color: C.dark, border: `1px solid ${C.border}`,
-                padding: '4px 11px', borderRadius: 100,
-              }}>
-                ✦ Featured
-              </span>
-            )}
-            {(post.tags ?? []).map(tag => (
-              <span key={tag} style={{
-                fontSize: 10, fontWeight: 500, color: C.muted,
-                border: `1px solid ${C.border}`, borderRadius: 100,
-                padding: '3px 10px', letterSpacing: '0.02em',
-              }}>
-                #{tag}
-              </span>
-            ))}
-          </div>
-
-          {/* Title */}
-          <h1 style={{
-            fontSize: 'clamp(26px,4.5vw,46px)', fontWeight: 900,
-            lineHeight: 1.1, letterSpacing: '-0.04em',
-            color: C.dark, marginBottom: 18,
+          {/* ── Article header — staggered slide-in ── */}
+          <header style={{
+            paddingTop: post.thumbnail ? 40 : 52, paddingBottom: 36,
+            animation: phase !== 'entering' ? 'content-rise .65s .15s cubic-bezier(0.22,1,0.36,1) both' : 'none',
           }}>
-            {post.title}
-          </h1>
-
-          {/* Excerpt / lead */}
-          <p style={{ fontSize: 17, lineHeight: 1.75, color: C.muted, maxWidth: 620, marginBottom: 32 }}>
-            {post.excerpt}
-          </p>
-
-          {/* Separator with accent bar */}
-          <div style={{ position: 'relative', height: 1, background: C.border, marginBottom: 28 }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, height: 2, width: 48, background: C.accent, borderRadius: 2, marginTop: -0.5 }} />
-          </div>
-
-          {/* Author row */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{
-                width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-                background: C.dark, color: C.white,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 15, fontWeight: 800,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
-              }}>
-                {post.author.initials}
-              </span>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>{post.author.name}</p>
-                <p style={{ fontSize: 11, color: C.muted }}>Author</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-              {[
-                {
-                  icon: <><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" /></>,
-                  label: post.date,
-                },
-                {
-                  icon: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></>,
-                  label: post.readTime,
-                },
-                {
-                  icon: <><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></>,
-                  label: `${(post.views ?? 0).toLocaleString()} views`,
-                },
-              ].map((item, i) => (
-                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.muted }}>
-                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    {item.icon}
-                  </svg>
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        </header>
-
-        {/* ── Article body ── */}
-        <article
-          id="article-content"
-          style={{
-            display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 56,
-            animation: phase !== 'entering' ? 'content-rise .72s .32s cubic-bezier(0.22,1,0.36,1) both' : 'none',
-          }}
-        >
-          {body.map((block, i) => (
-            <RenderBlock key={i} block={block} />
-          ))}
-
-          {/* ── Like + share row ── */}
-          <div style={{
-            marginTop: 20, paddingTop: 32,
-            borderTop: `1px solid ${C.border}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            flexWrap: 'wrap', gap: 16,
-          }}>
-            <LikeButton
-              slug={slug}
-              initialLikes={post.likes ?? 0}
-              onLike={handleLike}
-            />
+            {/* Back to feed — triggers exit animation */}
             <button
               onClick={() => navigateBack('/dashboard')}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
                 fontSize: 12, fontWeight: 700, color: C.muted,
-                background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 9,
-                padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit',
-                transition: 'border-color .18s, color .18s',
+                background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                marginBottom: 32, letterSpacing: '0.05em', textTransform: 'uppercase',
+                transition: 'color .18s', padding: 0,
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}
+              onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+              onMouseLeave={e => (e.currentTarget.style.color = C.muted)}
             >
-              More posts
-              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
+              All posts
             </button>
-          </div>
 
-          {/* ── Author card ── */}
-          <div style={{
-            marginTop: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 20,
-            background: C.dark, borderRadius: 16, padding: 'clamp(20px,3vw,32px)',
-            position: 'relative', overflow: 'hidden',
-            boxShadow: '0 4px 30px rgba(0,0,0,0.12)',
-          }}>
-            {/* Glow */}
-            <div style={{ position: 'absolute', bottom: -40, right: -40, width: 220, height: 220, background: 'radial-gradient(circle, rgba(255,106,0,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
-            {/* Grid texture */}
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
-
-            <span style={{
-              width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
-              background: C.accent, color: C.white,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, fontWeight: 900, position: 'relative',
-              boxShadow: '0 0 0 3px rgba(255,106,0,0.25)',
-            }}>
-              {post.author.initials}
-            </span>
-            <div style={{ flex: 1, position: 'relative' }}>
-              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 4 }}>Written by</p>
-              <p style={{ fontSize: 16, fontWeight: 800, color: C.white, letterSpacing: '-0.03em', marginBottom: 2 }}>{post.author.name}</p>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Published {post.date} · {post.readTime}</p>
-            </div>
-            {user && post.author.name === user.name && (
-              <Link
-                href={`/editor?edit=${post.slug}`}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7,
-                  border: '1px solid rgba(255,255,255,0.18)', borderRadius: 9,
-                  padding: '8px 16px', fontSize: 12, fontWeight: 700,
-                  color: 'rgba(255,255,255,0.65)', textDecoration: 'none',
-                  background: 'rgba(255,255,255,0.06)',
-                  transition: 'border-color .18s, color .18s, background .18s',
-                  position: 'relative',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.white; e.currentTarget.style.background = 'rgba(255,106,0,0.14)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
-              >
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                Edit post
-              </Link>
-            )}
-          </div>
-
-          {/* ── Comments section ── */}
-          <div id="comments" style={{ marginTop: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: C.dark, letterSpacing: '-0.03em' }}>Comments</h2>
+            {/* Badges row */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 22 }}>
               <span style={{
-                background: C.dark, color: C.white,
-                fontSize: 11, fontWeight: 800, borderRadius: 100,
-                padding: '3px 10px',
-                minWidth: 26, textAlign: 'center',
+                fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase',
+                color: C.accent, background: C.accentDim,
+                border: '1px solid rgba(255,106,0,0.22)',
+                padding: '4px 12px', borderRadius: 100,
               }}>
-                {comments.length}
+                {post.category}
               </span>
+              {post.featured && (
+                <span style={{
+                  fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase',
+                  color: C.dark, border: `1px solid ${C.border}`,
+                  padding: '4px 11px', borderRadius: 100,
+                }}>
+                  ✦ Featured
+                </span>
+              )}
+              {(post.tags ?? []).map(tag => (
+                <span key={tag} style={{
+                  fontSize: 10, fontWeight: 500, color: C.muted,
+                  border: `1px solid ${C.border}`, borderRadius: 100,
+                  padding: '3px 10px', letterSpacing: '0.02em',
+                }}>
+                  #{tag}
+                </span>
+              ))}
             </div>
 
-            {/* Comment form */}
-            <form
-              id="comment-form"
-              onSubmit={handleComment}
-              style={{
-                display: 'flex', flexDirection: 'column', gap: 14,
-                background: C.surface, borderRadius: 14,
-                border: `1px solid ${C.border}`,
-                padding: 'clamp(20px,3vw,28px)',
-                marginBottom: 32,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
-              }}
-            >
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.dark, letterSpacing: '-0.02em' }}>Leave a comment</h3>
+            {/* Title */}
+            <h1 style={{
+              fontSize: 'clamp(26px,4.5vw,46px)', fontWeight: 900,
+              lineHeight: 1.1, letterSpacing: '-0.04em',
+              color: C.dark, marginBottom: 18,
+            }}>
+              {post.title}
+            </h1>
 
-              {/* Show name field only for guests */}
-              {!user && (
+            {/* Excerpt / lead */}
+            <p style={{ fontSize: 17, lineHeight: 1.75, color: C.muted, maxWidth: 620, marginBottom: 32 }}>
+              {post.excerpt}
+            </p>
+
+            {/* Separator with accent bar */}
+            <div style={{ position: 'relative', height: 1, background: C.border, marginBottom: 28 }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, height: 2, width: 48, background: C.accent, borderRadius: 2, marginTop: -0.5 }} />
+            </div>
+
+            {/* Author row */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{
+                  width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                  background: C.dark, color: C.white,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 15, fontWeight: 800,
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
+                }}>
+                  {post.author.initials}
+                </span>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>{post.author.name}</p>
+                  <p style={{ fontSize: 11, color: C.muted }}>Author</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+                {[
+                  {
+                    icon: <><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" /></>,
+                    label: post.date,
+                  },
+                  {
+                    icon: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></>,
+                    label: post.readTime,
+                  },
+                  {
+                    icon: <><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></>,
+                    label: `${(post.views ?? 0).toLocaleString()} views`,
+                  },
+                ].map((item, i) => (
+                  <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.muted }}>
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      {item.icon}
+                    </svg>
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </header>
+
+          {/* ── Article body ── */}
+          <article
+            id="article-content"
+            style={{
+              display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 56,
+              animation: phase !== 'entering' ? 'content-rise .72s .32s cubic-bezier(0.22,1,0.36,1) both' : 'none',
+            }}
+          >
+            {body.map((block, i) => (
+              <RenderBlock key={i} block={block} />
+            ))}
+
+            {/* ── Like + share row ── */}
+            <div style={{
+              marginTop: 20, paddingTop: 32,
+              borderTop: `1px solid ${C.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              flexWrap: 'wrap', gap: 16,
+            }}>
+              <LikeButton
+                slug={slug}
+                initialLikes={post.likes ?? 0}
+                onLike={handleLike}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {/* Chat with AI button */}
+                <button
+                  id="chat-with-ai-btn"
+                  onClick={() => setChatOpen(o => !o)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    padding: '10px 18px', borderRadius: 10,
+                    background: chatOpen
+                      ? `linear-gradient(135deg, ${C.accent} 0%, #ff8c00 100%)`
+                      : C.surface,
+                    border: `1.5px solid ${chatOpen ? C.accent : C.border}`,
+                    color: chatOpen ? '#fff' : C.dark,
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    boxShadow: chatOpen ? '0 4px 16px rgba(255,106,0,0.35)' : '0 2px 8px rgba(0,0,0,0.06)',
+                    transition: 'all .22s',
+                  }}
+                  onMouseEnter={e => { if (!chatOpen) { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent } }}
+                  onMouseLeave={e => { if (!chatOpen) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.dark } }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  {chatOpen ? 'Close Chat' : 'Chat with AI'}
+                </button>
+                <button
+                  onClick={() => navigateBack('/dashboard')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    fontSize: 12, fontWeight: 700, color: C.muted,
+                    background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 9,
+                    padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit',
+                    transition: 'border-color .18s, color .18s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}
+                >
+                  More posts
+                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* ── Author card ── */}
+            <div style={{
+              marginTop: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 20,
+              background: C.dark, borderRadius: 16, padding: 'clamp(20px,3vw,32px)',
+              position: 'relative', overflow: 'hidden',
+              boxShadow: '0 4px 30px rgba(0,0,0,0.12)',
+            }}>
+              {/* Glow */}
+              <div style={{ position: 'absolute', bottom: -40, right: -40, width: 220, height: 220, background: 'radial-gradient(circle, rgba(255,106,0,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+              {/* Grid texture */}
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
+
+              <span style={{
+                width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
+                background: C.accent, color: C.white,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, fontWeight: 900, position: 'relative',
+                boxShadow: '0 0 0 3px rgba(255,106,0,0.25)',
+              }}>
+                {post.author.initials}
+              </span>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.accent, marginBottom: 4 }}>Written by</p>
+                <p style={{ fontSize: 16, fontWeight: 800, color: C.white, letterSpacing: '-0.03em', marginBottom: 2 }}>{post.author.name}</p>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Published {post.date} · {post.readTime}</p>
+              </div>
+              {user && post.author.name === user.name && (
+                <Link
+                  href={`/editor?edit=${post.slug}`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    border: '1px solid rgba(255,255,255,0.18)', borderRadius: 9,
+                    padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                    color: 'rgba(255,255,255,0.65)', textDecoration: 'none',
+                    background: 'rgba(255,255,255,0.06)',
+                    transition: 'border-color .18s, color .18s, background .18s',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.white; e.currentTarget.style.background = 'rgba(255,106,0,0.14)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                >
+                  <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Edit post
+                </Link>
+              )}
+            </div>
+
+            {/* ── Comments section ── */}
+            <div id="comments" style={{ marginTop: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: C.dark, letterSpacing: '-0.03em' }}>Comments</h2>
+                <span style={{
+                  background: C.dark, color: C.white,
+                  fontSize: 11, fontWeight: 800, borderRadius: 100,
+                  padding: '3px 10px',
+                  minWidth: 26, textAlign: 'center',
+                }}>
+                  {comments.length}
+                </span>
+              </div>
+
+              {/* Comment form */}
+              <form
+                id="comment-form"
+                onSubmit={handleComment}
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                  background: C.surface, borderRadius: 14,
+                  border: `1px solid ${C.border}`,
+                  padding: 'clamp(20px,3vw,28px)',
+                  marginBottom: 32,
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+                }}
+              >
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: C.dark, letterSpacing: '-0.02em' }}>Leave a comment</h3>
+
+                {/* Show name field only for guests */}
+                {!user && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label htmlFor="comment-name" style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Your name</label>
+                    <input
+                      id="comment-name"
+                      type="text"
+                      value={commentName}
+                      onChange={e => setCommentName(e.target.value)}
+                      placeholder="Jane Doe"
+                      style={{
+                        width: '100%', padding: '10px 14px',
+                        fontSize: 13, color: C.dark,
+                        background: C.bg, border: `1.5px solid ${C.border}`,
+                        borderRadius: 9, outline: 'none',
+                        fontFamily: 'inherit', boxSizing: 'border-box',
+                        transition: 'border-color .18s',
+                      }}
+                      onFocus={e => (e.currentTarget.style.borderColor = C.dark)}
+                      onBlur={e => (e.currentTarget.style.borderColor = C.border)}
+                    />
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label htmlFor="comment-name" style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Your name</label>
-                  <input
-                    id="comment-name"
-                    type="text"
-                    value={commentName}
-                    onChange={e => setCommentName(e.target.value)}
-                    placeholder="Jane Doe"
+                  <label htmlFor="comment-text" style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Comment</label>
+                  <textarea
+                    id="comment-text"
+                    rows={4}
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                    placeholder="Share your thoughts…"
                     style={{
-                      width: '100%', padding: '10px 14px',
+                      width: '100%', padding: '12px 14px',
                       fontSize: 13, color: C.dark,
                       background: C.bg, border: `1.5px solid ${C.border}`,
                       borderRadius: 9, outline: 'none',
-                      fontFamily: 'inherit', boxSizing: 'border-box',
-                      transition: 'border-color .18s',
+                      fontFamily: 'inherit', resize: 'vertical',
+                      boxSizing: 'border-box', transition: 'border-color .18s',
+                      lineHeight: 1.7,
                     }}
                     onFocus={e => (e.currentTarget.style.borderColor = C.dark)}
                     onBlur={e => (e.currentTarget.style.borderColor = C.border)}
                   />
                 </div>
-              )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label htmlFor="comment-text" style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Comment</label>
-                <textarea
-                  id="comment-text"
-                  rows={4}
-                  value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  placeholder="Share your thoughts…"
-                  style={{
-                    width: '100%', padding: '12px 14px',
-                    fontSize: 13, color: C.dark,
-                    background: C.bg, border: `1.5px solid ${C.border}`,
-                    borderRadius: 9, outline: 'none',
-                    fontFamily: 'inherit', resize: 'vertical',
-                    boxSizing: 'border-box', transition: 'border-color .18s',
-                    lineHeight: 1.7,
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = C.dark)}
-                  onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-                />
+                {commentError && (
+                  <p style={{ fontSize: 12, color: '#d32f2f', fontWeight: 600, margin: 0 }}>{commentError}</p>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  <button
+                    type="submit"
+                    id="submit-comment"
+                    disabled={submittingComment}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      padding: '10px 22px', borderRadius: 9,
+                      background: C.dark, color: C.white,
+                      border: `1.5px solid ${C.dark}`,
+                      fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
+                      cursor: submittingComment ? 'wait' : 'pointer',
+                      opacity: submittingComment ? 0.6 : 1,
+                      transition: 'background .18s, transform .15s',
+                      letterSpacing: '0.04em',
+                    }}
+                    onMouseEnter={e => { if (!submittingComment) { e.currentTarget.style.background = '#2a2a2a'; e.currentTarget.style.transform = 'translateY(-1px)' } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = C.dark; e.currentTarget.style.transform = 'none' }}
+                  >
+                    {submittingComment ? (
+                      <><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ animation: 'spin 1s linear infinite' }}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Posting…</>
+                    ) : 'Post Comment'}
+                  </button>
+                  {user && (
+                    <span style={{ fontSize: 12, color: C.muted }}>
+                      Posting as <strong style={{ color: C.dark, fontWeight: 700 }}>{user.name}</strong>
+                    </span>
+                  )}
+                </div>
+              </form>
+
+              {/* Comment list */}
+              {comments.length === 0 ? (
+                <div style={{
+                  textAlign: 'center', padding: '36px 24px',
+                  background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`,
+                }}>
+                  <div style={{ fontSize: 28, marginBottom: 10 }}>💬</div>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.dark, marginBottom: 4 }}>No comments yet</p>
+                  <p style={{ fontSize: 12, color: C.muted }}>Be the first to share your thoughts!</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, borderRadius: 14, overflow: 'hidden', border: `1px solid ${C.border}`, background: C.border }}>
+                  {comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 14,
+                        padding: '18px 22px', background: C.surface,
+                      }}
+                    >
+                      <span style={{
+                        width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                        background: C.dark, color: C.white,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, fontWeight: 800,
+                      }}>
+                        {comment.authorInitials}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{comment.authorName}</span>
+                          <span style={{ fontSize: 11, color: C.muted }}>{comment.date}</span>
+                        </div>
+                        <p style={{ fontSize: 13, lineHeight: 1.75, color: '#3a3a3a', margin: 0, wordBreak: 'break-word' }}>{comment.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Bottom nav ── */}
+            <div style={{
+              marginTop: 32, paddingTop: 24,
+              borderTop: `1px solid ${C.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              animation: phase !== 'entering' ? 'content-rise .65s .48s cubic-bezier(0.22,1,0.36,1) both' : 'none',
+            }}>
+              <button
+                onClick={() => navigateBack('/dashboard')}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  fontSize: 12, fontWeight: 700, color: C.muted,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: 'inherit', transition: 'color .18s', padding: 0,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+                onMouseLeave={e => (e.currentTarget.style.color = C.muted)}
+              >
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                All posts
+              </button>
+              <button
+                id="back-to-top"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  fontSize: 12, fontWeight: 700, color: C.muted,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: 'inherit', transition: 'color .18s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
+                onMouseLeave={e => (e.currentTarget.style.color = C.muted)}
+              >
+                Back to top
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+            </div>
+          </article>
+        </div>{/* end article column */}
+
+        {/* ── AI Chat Panel ── */}
+        {chatOpen && (
+          <div style={{
+            flex: '0 0 40%', width: '40%', minWidth: 320,
+            height: 'calc(100vh - 56px)', position: 'sticky', top: 56,
+            display: 'flex', flexDirection: 'column',
+            background: C.surface,
+            borderLeft: `1px solid ${C.border}`,
+            boxShadow: '-4px 0 24px rgba(0,0,0,0.06)',
+            animation: 'chatSlideIn .35s cubic-bezier(0.22,1,0.36,1)',
+            overflow: 'hidden',
+            zIndex: 50,
+          }}>
+          {/* ── Panel header — matches AppHeader style ── */}
+          <div style={{
+            padding: '0 22px',
+            background: 'rgba(247,247,247,0.97)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            borderBottom: `1px solid ${C.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            height: 56, flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{
+                width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                background: C.dark,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </span>
+              <div>
+                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.accent, margin: 0, lineHeight: 1 }}>AI Assistant</p>
+                <p style={{ fontSize: 13, fontWeight: 800, color: C.dark, letterSpacing: '-0.02em', margin: '2px 0 0' }}>Chat with AI</p>
               </div>
+            </div>
+            <button
+              onClick={() => setChatOpen(false)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                color: C.muted, background: 'none',
+                border: `1px solid ${C.border}`, borderRadius: 7,
+                padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit',
+                transition: 'border-color .18s, color .18s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Close
+            </button>
+          </div>
 
-              {commentError && (
-                <p style={{ fontSize: 12, color: '#d32f2f', fontWeight: 600, margin: 0 }}>{commentError}</p>
-              )}
+          {/* ── Messages area — same bg as page ── */}
+          <div style={{
+            flex: 1, overflowY: 'auto',
+            padding: '24px 20px 12px',
+            background: C.bg,
+            display: 'flex', flexDirection: 'column', gap: 16,
+          }}>
+            {messages.length === 0 && (
+              <div style={{
+                background: C.surface, borderRadius: 14,
+                border: `1px solid ${C.border}`,
+                padding: '28px 24px',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+              }}>
+                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.accent, marginBottom: 10 }}>Get Started</p>
+                <p style={{ fontSize: 14, fontWeight: 800, color: C.dark, letterSpacing: '-0.02em', marginBottom: 6 }}>Ask about this article</p>
+                <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 20 }}>
+                  The AI will answer using only the content of this post.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    'Summarize this article',
+                    'What are the key takeaways?',
+                    'Explain in simple terms',
+                  ].map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => setChatInput(prompt)}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        width: '100%', padding: '10px 14px',
+                        background: C.bg, border: `1.5px solid ${C.border}`,
+                        borderRadius: 9, cursor: 'pointer',
+                        fontSize: 12, fontWeight: 600, color: C.muted,
+                        fontFamily: 'inherit', textAlign: 'left',
+                        transition: 'border-color .18s, color .18s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.dark; e.currentTarget.style.color = C.dark }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}
+                    >
+                      <span>{prompt}</span>
+                      <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+                flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+              }}>
+                {/* Avatar — matches comment list initials chip */}
+                <span style={{
+                  width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                  background: m.role === 'user' ? C.dark : C.surface,
+                  color: m.role === 'user' ? C.white : C.accent,
+                  border: m.role === 'ai' ? `1.5px solid ${C.border}` : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 800,
+                }}>
+                  {m.role === 'user'
+                    ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
+                    : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                  }
+                </span>
+
+                {/* Message card — matches comment item style */}
+                <div style={{
+                  flex: 1, minWidth: 0,
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.dark }}>
+                      {m.role === 'user' ? 'You' : 'AI Assistant'}
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: m.role === 'user' ? C.muted : C.accent }}>
+                      {m.role === 'user' ? 'asked' : 'answered'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 13, lineHeight: 1.75, color: '#3a3a3a', margin: 0, wordBreak: 'break-word' }}>
+                    {m.text}
+                  </p>
+                </div>
+              </div>
+            ))}
+
+            {/* Typing indicator — matches AI message card style */}
+            {chatLoading && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span style={{
+                  width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                  background: C.surface, color: C.accent,
+                  border: `1.5px solid ${C.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                </span>
+                <div style={{
+                  background: C.surface, border: `1px solid ${C.border}`,
+                  borderRadius: 12, padding: '14px 16px',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                }}>
+                  {[0,1,2].map(i => (
+                    <span key={i} style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: C.accent, display: 'inline-block',
+                      animation: `chatDot .85s ${i * 0.18}s ease-in-out infinite`,
+                    }} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* ── Input — exact match to comment form ── */}
+          <div style={{
+            padding: '16px 20px 20px',
+            background: C.bg,
+            borderTop: `1px solid ${C.border}`,
+            flexShrink: 0,
+          }}>
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 10,
+              background: C.surface, borderRadius: 14,
+              border: `1px solid ${C.border}`,
+              padding: '16px 18px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+            }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Your question
+              </label>
+              <textarea
+                id="chatInput"
+                rows={3}
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat() } }}
+                placeholder="Ask anything about this post…"
+                style={{
+                  width: '100%', padding: '10px 14px',
+                  fontSize: 13, color: C.dark,
+                  background: C.bg, border: `1.5px solid ${C.border}`,
+                  borderRadius: 9, outline: 'none',
+                  fontFamily: 'inherit', resize: 'none',
+                  boxSizing: 'border-box', transition: 'border-color .18s',
+                  lineHeight: 1.7,
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = C.dark)}
+                onBlur={e => (e.currentTarget.style.borderColor = C.border)}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+                <p style={{ fontSize: 11, color: C.muted }}>
+                  Shift+Enter for new line
+                </p>
                 <button
-                  type="submit"
-                  id="submit-comment"
-                  disabled={submittingComment}
+                  id="sendBtn"
+                  onClick={sendChat}
+                  disabled={chatLoading || !chatInput.trim()}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '10px 22px', borderRadius: 9,
-                    background: C.dark, color: C.white,
-                    border: `1.5px solid ${C.dark}`,
+                    padding: '10px 20px', borderRadius: 9,
+                    background: chatLoading || !chatInput.trim() ? C.border : C.dark,
+                    color: chatLoading || !chatInput.trim() ? C.muted : C.white,
+                    border: `1.5px solid ${chatLoading || !chatInput.trim() ? C.border : C.dark}`,
                     fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
-                    cursor: submittingComment ? 'wait' : 'pointer',
-                    opacity: submittingComment ? 0.6 : 1,
+                    cursor: chatLoading || !chatInput.trim() ? 'not-allowed' : 'pointer',
                     transition: 'background .18s, transform .15s',
                     letterSpacing: '0.04em',
                   }}
-                  onMouseEnter={e => { if (!submittingComment) { e.currentTarget.style.background = '#2a2a2a'; e.currentTarget.style.transform = 'translateY(-1px)' } }}
-                  onMouseLeave={e => { e.currentTarget.style.background = C.dark; e.currentTarget.style.transform = 'none' }}
+                  onMouseEnter={e => { if (!chatLoading && chatInput.trim()) { e.currentTarget.style.background = '#2a2a2a'; e.currentTarget.style.transform = 'translateY(-1px)' } }}
+                  onMouseLeave={e => { if (!chatLoading && chatInput.trim()) { e.currentTarget.style.background = C.dark; e.currentTarget.style.transform = 'none' } }}
                 >
-                  {submittingComment ? (
-                    <><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ animation: 'spin 1s linear infinite' }}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Posting…</>
-                  ) : 'Post Comment'}
+                  {chatLoading ? (
+                    <>
+                      <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ animation: 'spin 1s linear infinite' }}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                      Thinking…
+                    </>
+                  ) : (
+                    <>
+                      Send
+                      <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                      </svg>
+                    </>
+                  )}
                 </button>
-                {user && (
-                  <span style={{ fontSize: 12, color: C.muted }}>
-                    Posting as <strong style={{ color: C.dark, fontWeight: 700 }}>{user.name}</strong>
-                  </span>
-                )}
               </div>
-            </form>
-
-            {/* Comment list */}
-            {comments.length === 0 ? (
-              <div style={{
-                textAlign: 'center', padding: '36px 24px',
-                background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`,
-              }}>
-                <div style={{ fontSize: 28, marginBottom: 10 }}>💬</div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: C.dark, marginBottom: 4 }}>No comments yet</p>
-                <p style={{ fontSize: 12, color: C.muted }}>Be the first to share your thoughts!</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, borderRadius: 14, overflow: 'hidden', border: `1px solid ${C.border}`, background: C.border }}>
-                {comments.map((comment) => (
-                  <div
-                    key={comment.id}
-                    style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 14,
-                      padding: '18px 22px', background: C.surface,
-                    }}
-                  >
-                    <span style={{
-                      width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                      background: C.dark, color: C.white,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 800,
-                    }}>
-                      {comment.authorInitials}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{comment.authorName}</span>
-                        <span style={{ fontSize: 11, color: C.muted }}>{comment.date}</span>
-                      </div>
-                      <p style={{ fontSize: 13, lineHeight: 1.75, color: '#3a3a3a', margin: 0, wordBreak: 'break-word' }}>{comment.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            </div>
           </div>
+        </div>
+      )}{/* end chatOpen */}
 
-          {/* ── Bottom nav ── */}
-          <div style={{
-            marginTop: 32, paddingTop: 24,
-            borderTop: `1px solid ${C.border}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            animation: phase !== 'entering' ? 'content-rise .65s .48s cubic-bezier(0.22,1,0.36,1) both' : 'none',
-          }}>
-            <button
-              onClick={() => navigateBack('/dashboard')}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                fontSize: 12, fontWeight: 700, color: C.muted,
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontFamily: 'inherit', transition: 'color .18s', padding: 0,
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
-              onMouseLeave={e => (e.currentTarget.style.color = C.muted)}
-            >
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              All posts
-            </button>
-            <button
-              id="back-to-top"
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                fontSize: 12, fontWeight: 700, color: C.muted,
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontFamily: 'inherit', transition: 'color .18s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = C.dark)}
-              onMouseLeave={e => (e.currentTarget.style.color = C.muted)}
-            >
-              Back to top
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-              </svg>
-            </button>
-          </div>
-        </article>
-      </div>
+      </div>{/* end content row flex wrapper */}
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
@@ -849,6 +1190,14 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50%       { opacity: 0.5; }
+        }
+        @keyframes chatSlideIn {
+          from { opacity: 0; transform: translateX(32px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes chatDot {
+          0%, 100% { transform: translateY(0);   opacity: 0.4; }
+          50%       { transform: translateY(-4px); opacity: 1; }
         }
       `}</style>
     </div>

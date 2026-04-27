@@ -188,6 +188,90 @@ def health():
     return jsonify({"status": "ok"}), 200
 
 
+# ── AI Blog Generation ────────────────────────────────────────
+import requests as _requests
+
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "mistral")
+
+
+def _ollama(prompt: str) -> str:
+    """Send a prompt to Ollama and return the response text."""
+    resp = _requests.post(
+        OLLAMA_URL,
+        json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return resp.json().get("response", "").strip()
+
+
+@app.route("/api/generate-blog", methods=["POST"])
+def generate_blog():
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+
+    try:
+        # Step 1 — generate full blog content
+        content_prompt = (
+            "You are a professional blog writer.\n"
+            f"Write a detailed blog on the topic: {title}.\n"
+            "Include introduction, key points, and conclusion."
+        )
+        generated_content = _ollama(content_prompt)
+
+        # Step 2 — summarise the generated content
+        summary_prompt = (
+            "Summarize the following blog into 4-5 concise lines:\n\n"
+            f"{generated_content}"
+        )
+        generated_summary = _ollama(summary_prompt)
+
+    except _requests.exceptions.ConnectionError:
+        return jsonify({"error": "Ollama is not running. Start it with: ollama serve"}), 503
+    except _requests.exceptions.Timeout:
+        return jsonify({"error": "Ollama request timed out. Try again."}), 504
+    except Exception as exc:
+        return jsonify({"error": f"Generation failed: {str(exc)}"}), 500
+
+    return jsonify({"content": generated_content, "summary": generated_summary}), 200
+
+
+@app.route("/api/ask-question", methods=["POST"])
+def ask_question():
+    data     = request.get_json(silent=True) or {}
+    blog     = (data.get("blog") or "").strip()
+    question = (data.get("question") or "").strip()
+
+    if not question:
+        return jsonify({"error": "Question is required"}), 400
+    if not blog:
+        return jsonify({"error": "Blog content is required"}), 400
+
+    prompt = (
+        "You are an AI assistant.\n\n"
+        "Answer the user's question ONLY using the given blog content.\n"
+        "If the answer is not present in the blog, say 'Not found in the blog'.\n\n"
+        f"Blog:\n{blog}\n\n"
+        f"Question:\n{question}\n\n"
+        "Answer clearly and concisely."
+    )
+
+    try:
+        answer = _ollama(prompt)
+    except _requests.exceptions.ConnectionError:
+        return jsonify({"error": "Ollama is not running. Start it with: ollama serve"}), 503
+    except _requests.exceptions.Timeout:
+        return jsonify({"error": "Ollama request timed out. Try again."}), 504
+    except Exception as exc:
+        return jsonify({"error": f"AI call failed: {str(exc)}"}), 500
+
+    return jsonify({"answer": answer}), 200
+
+
 # ── Bootstrap ─────────────────────────────────────────────────
 if __name__ == "__main__":
     init_db()
